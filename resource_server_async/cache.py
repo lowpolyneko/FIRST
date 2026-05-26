@@ -86,10 +86,16 @@ def get_item_from_cache(cache_key: str) -> Any:
     return None
 
 
+get_item_from_cache_async = sync_to_async(get_item_from_cache)
+
+
 def cache_item(cache_key: str, data: Any, ttl: int = 3600) -> None:
     """Cache item data (60 minutes TTL by default)."""
     cache.set(cache_key, data, ttl)
     logger.debug(f"Cached {cache_key}.")
+
+
+cache_item_async = sync_to_async(cache_item)
 
 
 def remove_item_from_cache(cache_key: str) -> None:
