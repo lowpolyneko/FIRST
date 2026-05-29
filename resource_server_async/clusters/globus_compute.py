@@ -2,11 +2,11 @@ import logging
 from typing import Any
 
 from asgiref.sync import sync_to_async
-from django.core.cache import cache
 from django.utils.text import slugify
 from pydantic import BaseModel
 
 from resource_server_async import globus_utils
+from resource_server_async.cache import cache_item_async, get_item_from_cache_async
 from resource_server_async.clusters.cluster import BaseCluster
 
 from ..errors import EndpointError, GetJobsError
@@ -61,7 +61,7 @@ class GlobusComputeCluster(BaseCluster):
         cache_key = f"qstat_details:{auth.username}:{auth.id}:{self.cluster_name}"
 
         # Try to get qstat details from Redis
-        cached_result: JobsByStatus | None = cache.get(cache_key)
+        cached_result: JobsByStatus | None = await get_item_from_cache_async(cache_key)
         if cached_result is not None:
             return cached_result
 
@@ -140,7 +140,7 @@ class GlobusComputeCluster(BaseCluster):
         response = JobsByStatus(**result)
 
         # Cache the result for 60 seconds
-        cache.set(cache_key, response, 60)
+        await cache_item_async(cache_key, response, ttl=60)
 
         # Return qstat result
         return response
