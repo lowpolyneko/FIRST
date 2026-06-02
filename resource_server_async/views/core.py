@@ -1,9 +1,12 @@
 import logging
+from typing import Any, Optional
 
 from django.http import HttpRequest
 from ninja import Router
 
 from ..clusters import BaseCluster
+from ..endpoints import BaseEndpoint
+from ..errors import EndpointNotFound
 from ..models import Cluster
 from ..schemas import ListEndpointsResponse
 from ..schemas.auth import AuthedRequest
@@ -11,10 +14,7 @@ from ..schemas.clusters import JobInfo, JobsByStatus
 from ..schemas.structured_logs import (
     UserPydantic,
 )
-from ..services import (
-    filter_jobs_for_user,
-    get_list_endpoints_data,
-)
+from ..services import filter_jobs_for_user, get_all_endpoints, get_list_endpoints_data
 
 router = Router()
 log = logging.getLogger(__name__)
@@ -101,3 +101,35 @@ async def get_jobs(request: AuthedRequest, cluster_name: str) -> JobsByStatus:
         )
     else:
         return await filter_jobs_for_user(cluster, request.auth)
+
+
+# Models (GET)
+@router.get("/{cluster_name}/models")
+async def get_models(
+    request: AuthedRequest, cluster_name: str, model_id: Optional[str] = None
+) -> list[dict[str, Any]]:
+    """Return configuration details of all models of a given cluster (if authorized)."""
+
+    # Check cluster permission
+    cluster = await BaseCluster.load_adapter(cluster_name)
+    cluster.check_permission(request.auth)
+
+    # Gather all authorized endpoints
+    endpoints: list[BaseEndpoint] = await get_all_endpoints(request.auth, cluster)
+
+    # Return model details of a specific model if model_name is provided
+    if model_id is not None:
+        endpoint = next(
+            (endpoint for endpoint in endpoints if endpoint.model == model_id), None
+        )
+        if endpoint is None:
+            raise EndpointNotFound(
+                f"{model_id} model not found on cluster {cluster_name}."
+            )
+        return [endpoint.model_details]
+
+    # Return model details of all authorized endpoints
+    return [
+        endpoint.model_details
+        for endpoint in sorted(endpoints, key=lambda endpoint: endpoint.model.lower())
+    ]
