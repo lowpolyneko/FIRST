@@ -3,20 +3,23 @@
         "model": "resource_server_async.cluster",
         "pk": 1,
         "fields": {
-            "cluster_name": "your-cluster",
+            "cluster_name": "sophia",
             "cluster_adapter": "resource_server_async.clusters.globus_compute.GlobusComputeCluster",
             "frameworks": [
-                "vllm",
-                "api"
+                "vllm"
             ],
             "openai_endpoints": [
                 "chat/completions",
+                "responses",
+                "messages",
                 "completions",
-                "embeddings"
+                "embeddings",
+                "health", 
+                "metrics"
             ],
             "config": {
-                "qstat_endpoint_uuid": "your-backend-globus-compute-qstat-endpoint-uuid",
-                "qstat_function_uuid": "your-backend-globus-compute-qstat-function-uuid"
+                "qstat_endpoint_uuid": "23c852cb-e780-49d3-9103-5ef4b1fcfd1c",
+                "qstat_function_uuid": "a84d7f2f-6066-44ba-bd5e-344f760e474b"
             }
         }
     },
@@ -24,17 +27,74 @@
         "model": "resource_server_async.cluster",
         "pk": 2,
         "fields": {
-            "cluster_name": "your-other-cluster",
+            "cluster_name": "metis",
             "cluster_adapter": "resource_server_async.clusters.metis.MetisCluster",
             "frameworks": [
                 "api"
             ],
             "openai_endpoints": [
-                "chat/completions"
+                "chat/completions",
+                "responses"
             ],
             "config": {
-                "status_url": "https://my-status-url.com/status"
+                "status_url": "https://metis.alcf.anl.gov/status"
             }
+        }
+    },
+    {
+        "model": "resource_server_async.cluster",
+        "pk": 3,
+        "fields": {
+            "cluster_name": "sophia-dev",
+            "cluster_adapter": "resource_server_async.clusters.globus_compute.GlobusComputeCluster",
+            "frameworks": [
+                "vllm"
+            ],
+            "openai_endpoints": [
+                "chat/completions",
+                "responses",
+                "messages",
+                "completions",
+                "embeddings",
+                "health", 
+                "metrics"
+            ],
+            "config": {
+                "qstat_endpoint_uuid": "23c852cb-e780-49d3-9103-5ef4b1fcfd1c",
+                "qstat_function_uuid": "a84d7f2f-6066-44ba-bd5e-344f760e474b"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+		        "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.cluster",
+        "pk": 4,
+        "fields": {
+            "cluster_name": "direct-api-dev",
+            "cluster_adapter": "resource_server_async.clusters.metis.MetisCluster",
+            "frameworks": [
+                "api"
+            ],
+            "openai_endpoints": [
+                "chat/completions",
+                "responses"
+            ],
+            "config": {
+                "status_url": "http://localhost:8888/status"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+		        "anl.gov"
+            ]
         }
     }
 ]

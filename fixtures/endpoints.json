@@ -3,15 +3,20 @@
         "model": "resource_server_async.endpoint",
         "pk": 1,
         "fields": {
-            "endpoint_slug": "your-cluster-api-your-model-70b",
-            "cluster": "your-cluster",
-            "framework": "api",
-            "model": "Your-Model-70B",
+            "endpoint_slug": "sophia-vllm-mistralaimixtral-8x22b-instruct-v01",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "mistralai/Mixtral-8x22B-Instruct-v0.1",
+            "tpm_model": 0,
+            "tpm_user": 0,
             "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
             "config": {
                 "api_port": 8000,
-                "endpoint_uuid": "your-backend-globus-compute-endpoint-uuid",
-                "function_uuid": "your-backend-globus-compute-function-uuid"
+                "endpoint_uuid": "46a57aff-68a7-48b2-8157-e27347d06740",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 16384
             }
         }
     },
@@ -19,15 +24,1269 @@
         "model": "resource_server_async.endpoint",
         "pk": 2,
         "fields": {
-            "endpoint_slug": "your-other-cluster-api-your-model-120b",
-            "cluster": "your-other-cluster",
+            "endpoint_slug": "sophia-vllm-meta-llamameta-llama-31-70b-instruct",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "f69909d6-62de-4e45-8c2a-4c37e0b6b11e",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 16384,
+                "max_num_seqs": 8,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "llama3_json"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 3,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-meta-llamameta-llama-31-8b-instruct",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8001,
+                "endpoint_uuid": "f69909d6-62de-4e45-8c2a-4c37e0b6b11e",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 32768,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "llama3_json"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 4,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-mistralaimistral-large-instruct-2407",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "mistralai/Mistral-Large-Instruct-2407",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "33bc18db-752b-4f60-81ad-2c7756990184",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 16384
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 5,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-mgoinnemotron-4-340b-instruct-hf",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "mgoin/Nemotron-4-340B-Instruct-hf",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "34fa20a8-0d4a-49d2-8a73-39dc85bd2ed4",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 6,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-meta-llamameta-llama-31-405b-instruct",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "meta-llama/Meta-Llama-3.1-405B-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "d39cbc54-b6ed-4d1f-894f-499dff5b1dc8",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "max_model_len": 24576,
+                "max_num_seqs": 8,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "llama3_json"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 7,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-this-is-for-test-suite",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "this-is-for-test-suite",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "function_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "batch_endpoint_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "batch_function_uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 8,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-meta-llamallama-32-90b-vision-instruct",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "meta-llama/Llama-3.2-90B-Vision-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "499a85ea-c9d0-400e-a836-aef6c0f2d43b",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 8192,
+                "max_num_seqs": 8,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "llama3_json"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 9,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-meta-llamallama-33-70b-instruct",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "meta-llama/Llama-3.3-70B-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8181,
+                "endpoint_uuid": "c3daad56-7af1-4ba4-bca4-63e4ce72f268",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 32768,
+                "max_num_seqs": 32,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "llama3_json"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 10,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-argonneauroragpt-it-v4-0125",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "argonne/AuroraGPT-IT-v4-0125",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8181,
+                "endpoint_uuid": "4f1275f4-e7f3-4f1f-8254-85141f42af49",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 11,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-argonneauroragpt-dpo-ufb-0225",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "argonne/AuroraGPT-DPO-UFB-0225",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8182,
+                "endpoint_uuid": "4f1275f4-e7f3-4f1f-8254-85141f42af49",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 12,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-allenaillama-31-tulu-3-405b",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "allenai/Llama-3.1-Tulu-3-405B",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "9ce1abd4-ee0b-475b-a90a-716f79c18af4",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 13,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-argonneauroragpt-tulu3-sft-0125",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "argonne/AuroraGPT-Tulu3-SFT-0125",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8183,
+                "endpoint_uuid": "4f1275f4-e7f3-4f1f-8254-85141f42af49",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 14,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-meta-llamallama-4-maverick-17b-128e-instruct",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "6f19b26a-6e4e-4e96-9253-c848a66bec40",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 16384,
+                "max_num_seqs": 8,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "llama4_json"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 15,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-meta-llamallama-4-scout-17b-16e-instruct",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "987f3fbd-3cf9-4c14-aadf-15be380d3d90",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 32768,
+                "max_num_seqs": 8,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "llama4_pythonic"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 16,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-salesforcesfr-embedding-mistral",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "Salesforce/SFR-Embedding-Mistral",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "e0ea324f-7722-4810-affe-5b7ef0994c2a",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 17,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-mistralaimistral-7b-instruct-v03-embed",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "mistralai/Mistral-7B-Instruct-v0.3-embed",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8001,
+                "endpoint_uuid": "e0ea324f-7722-4810-affe-5b7ef0994c2a",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 18,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-googlegemma-3-27b-it",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "google/gemma-3-27b-it",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "73f3219b-dbf2-4593-bc56-5cbf58bd2347",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "max_model_len": 32768,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "pythonic"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 19,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-openaigpt-oss-20b",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "openai/gpt-oss-20b",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8001,
+                "endpoint_uuid": "f28dafdf-87ea-4aae-9b62-9ca39ca9d2fd",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "tool_call_parser": "openai",
+                "enable_auto_tool_choice": true
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 20,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-openaigpt-oss-120b",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "openai/gpt-oss-120b",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "f28dafdf-87ea-4aae-9b62-9ca39ca9d2fd",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+                "tool_call_parser": "openai",
+                "enable_auto_tool_choice": true,
+                "max_model_len": 65536,
+                "max_num_seqs": 32
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 21,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-argonneauroragpt-kto-ufb-0325",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "argonne/AuroraGPT-KTO-UFB-0325",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8184,
+                "endpoint_uuid": "4f1275f4-e7f3-4f1f-8254-85141f42af49",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "batch_endpoint_uuid": "177b2ebc-e126-47d5-b753-6070cdbcae81",
+                "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 22,
+        "fields": {
+            "endpoint_slug": "metis-api-gpt-oss-120b",
+            "cluster": "metis",
             "framework": "api",
-            "model": "Your-Model-120B",
+            "model": "gpt-oss-120b",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_GPT_OSS_120B_API_KEY"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 23,
+        "fields": {
+            "endpoint_slug": "metis-api-llama-4-maverick-17b-128e-instruct",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "Llama-4-Maverick-17B-128E-Instruct",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_MAVERICK_17B_128E_API_KEY"
+            }
+        }
+    },
+        {
+        "model": "resource_server_async.endpoint",
+        "pk": 24,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-600m-contrastive-aminoacid",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-600M-contrastive-aminoacid",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 25,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-600m-contrastive-codon",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-600M-contrastive-codon",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 26,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-600m-joint-aminoacid",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-600M-joint-aminoacid",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 27,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-600m-joint-codon",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-600M-joint-codon",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 28,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-600m-aminoacid",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-600M-aminoacid",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 29,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-600m-codon",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-600M-codon",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 30,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-300m-contrastive-aminoacid",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-300M-contrastive-aminoacid",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 31,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-300m-contrastive-codon",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-300M-contrastive-codon",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 32,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-300m-joint-aminoacid",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-300M-joint-aminoacid",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 33,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-300m-joint-codon",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-300M-joint-codon",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 34,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-300m-aminoacid",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-300M-aminoacid",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 35,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-genslm-testgenslm-esmc-300m-codon",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "genslm-test/genslm-esmc-300M-codon",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "5674c36b-3996-4521-92fd-37f72b6c6d97",
+                "function_uuid": "0d7e3ab2-96ce-4fa1-bc48-7c5fd4a403c1"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 36,
+        "fields": {
+            "endpoint_slug": "metis-api-model-removed-pk36",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "model-removed-pk36",
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_GPT_OSS_120B_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 37,
+        "fields": {
+            "endpoint_slug": "metis-api-model-removed-pk37",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "model-removed-pk37",
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_GPT_OSS_120B_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 38,
+        "fields": {
+            "endpoint_slug": "metis-api-model-removed-pk38",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "model-removed-pk38",
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_GPT_OSS_120B_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 39,
+        "fields": {
+            "endpoint_slug": "metis-api-model-removed-pk39",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "model-removed-pk39",
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_MAVERICK_17B_128E_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 40,
+        "fields": {
+            "endpoint_slug": "metis-api-model-removed-pk40",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "model-removed-pk40",
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_MAVERICK_17B_128E_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 41,
+        "fields": {
+            "endpoint_slug": "metis-api-model-removed-pk41",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "model-removed-pk41",
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_MAVERICK_17B_128E_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 42,
+        "fields": {
+            "endpoint_slug": "metis-api-model-removed-pk42",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "model-removed-pk42",
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_MAVERICK_17B_128E_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 43,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-mistralaidevstral-2-123b-instruct-2512",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "mistralai/Devstral-2-123B-Instruct-2512",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "9184dc8b-139a-4c75-bc75-2da8c223e513",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "max_model_len": 16384,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "mistral"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 44,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-astromlabastrosage-70b-20251009",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "AstroMLab/AstroSage-70B-20251009",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "64bc699e-8837-4336-8525-2556f25bf10f",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "enable_auto_tool_choice": true
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 45,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-qwen3-coder-480b-a35b-instruct-awq",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "Qwen3-Coder-480B-A35B-Instruct-AWQ",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "3097e89f-c52f-4283-a544-0e5de3670feb",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "max_model_len": 16384,
+                "enable_auto_tool_choice": true,
+                "tool_call_parser": "qwen3_coder"
+            },
+	    "allowed_globus_groups": [
+                "8581127a-06b0-11f1-b123-0affecd7d007"
+            ],
+	    "allowed_domains": [
+	        "alcf.anl.gov",
+		"anl.gov"
+	    ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 46,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-minimax-m25",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "MiniMax-M2.5",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "2beb06f8-efaf-4e4f-bb11-ecbddae27a0f",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "max_model_len": 8192,
+                "max_num_seqs": 4,
+                "tool_call_parser": "minimax_m2",
+                "reasoning_parser": "minimax_m2_append_think"
+            },
+            "allowed_globus_groups": [
+                "8581127a-06b0-11f1-b123-0affecd7d007"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+		"anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 47,
+        "fields": {
+            "endpoint_slug": "sophia-vllm-kimi-k25",
+            "cluster": "sophia",
+            "framework": "vllm",
+            "model": "Kimi-K2.5",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "6689a563-4691-4988-8e7c-4205d402b792",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+                "max_model_len": 16384,
+                "max_num_seqs": 1,
+                "tool-call-parser": "kimi_k2",
+                "reasoning-parser": "kimi_k2"
+            },
+            "allowed_globus_groups": [
+                "8581127a-06b0-11f1-b123-0affecd7d007"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+		        "anl.gov"
+            ]
+        }
+    },
+    {
+      "model": "resource_server_async.endpoint",
+      "pk": 48,
+      "fields": {
+          "endpoint_slug": "sophia-vllm-nvidianemotron-3-super-120b",
+          "cluster": "sophia",
+          "framework": "vllm",
+          "model": "nvidia/nemotron-3-super-120b",
+          "tpm_model": 0,
+          "tpm_user": 0,
+          "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+          "config": {
+              "api_port": 8000,
+              "endpoint_uuid": "449a591b-05f7-4878-ae61-19902db78f0c",
+              "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+              "max_model_len": 262144,
+              "enable_auto_tool_choice": true,
+              "reasoning_parser": "super_v3"
+          }
+      }
+    },
+      {
+     "model": "resource_server_async.endpoint",
+     "pk": 49,
+     "fields": {
+         "endpoint_slug": "sophia-vllm-googlegemma-4-31b-it",
+         "cluster": "sophia",
+         "framework": "vllm",
+         "model": "google/gemma-4-31B-it",
+         "tpm_model": 0,
+         "tpm_user": 0,
+         "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+         "config": {
+             "api_port": 8000,
+             "endpoint_uuid": "95dcf310-7e9d-4866-b44b-819c42c83d3b",
+             "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+             "batch_endpoint_uuid": "e1374715-853b-4f97-afc7-b08e50872c30",
+             "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+             "max_model_len": 262144,
+             "enable_auto_tool_choice": true,
+             "tool_call_parser": "gemma4",
+             "reasoning_parser": "gemma4"
+         }
+     }
+   },
+   {
+     "model": "resource_server_async.endpoint",
+     "pk": 50,
+     "fields": {
+         "endpoint_slug": "sophia-vllm-googlegemma-4-26b-a4b-it",
+         "cluster": "sophia",
+         "framework": "vllm",
+         "model": "google/gemma-4-26B-A4B-it",
+         "tpm_model": 0,
+         "tpm_user": 0,
+         "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+         "config": {
+             "api_port": 8000,
+             "endpoint_uuid": "2678fe80-9dae-4bc4-b4b3-64a8b86132db",
+             "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+             "batch_endpoint_uuid": "e1374715-853b-4f97-afc7-b08e50872c30",
+             "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+             "max_model_len": 262144,
+             "enable_auto_tool_choice": true,
+             "tool_call_parser": "gemma4",
+             "reasoning_parser": "gemma4"
+         }
+     }
+   },
+   {
+     "model": "resource_server_async.endpoint",
+     "pk": 51,
+     "fields": {
+         "endpoint_slug": "sophia-vllm-googlegemma-4-e4b-it",
+         "cluster": "sophia",
+         "framework": "vllm",
+         "model": "google/gemma-4-E4B-it",
+         "tpm_model": 0,
+         "tpm_user": 0,
+         "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+         "config": {
+             "api_port": 8000,
+             "endpoint_uuid": "ab48d8a0-d8fa-4ad2-b1f8-df3e1cc23849",
+             "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+             "batch_endpoint_uuid": "e1374715-853b-4f97-afc7-b08e50872c30",
+             "batch_function_uuid": "94a04bdf-69a5-456c-ae8a-c3dffc9b6ec2",
+             "enable_auto_tool_choice": true,
+             "tool_call_parser": "gemma4",
+             "reasoning_parser": "gemma4"
+         }
+     }
+   },
+   {
+     "model": "resource_server_async.endpoint",
+     "pk": 52,
+     "fields": {
+         "endpoint_slug": "sophia-vllm-arcee-aitrinity-large-thinking-w4a16",
+         "cluster": "sophia",
+         "framework": "vllm",
+         "model": "arcee-ai/Trinity-Large-Thinking-W4A16",
+         "tpm_model": 0,
+         "tpm_user": 0,
+         "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+         "config": {
+             "api_port": 8000,
+             "endpoint_uuid": "4dd22021-44d8-4cbe-8c5b-7a1df9c2e538",
+             "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea",
+             "max_model_len": 131072,
+             "max_num_seqs": 1,
+             "enable_auto_tool_choice": true
+         }
+     }
+   },
+   {
+       "model": "resource_server_async.endpoint",
+       "pk": 53,
+       "fields": {
+           "endpoint_slug": "sophia-sam3service-sam3",
+           "cluster": "sophia",
+           "framework": "sam3service",
+           "model": "sam3",
+           "tpm_model": 0,
+           "tpm_user": 0,
+           "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+           "config": {
+               "api_port": 8000,
+               "endpoint_uuid": "6699c6a0-2ce3-4798-b85c-3e65d93b68dd",
+               "function_uuid": "c5653f2c-98c8-4dd3-800d-ef7439c7e140"
+           }
+       }
+   },
+   {
+        "model": "resource_server_async.endpoint",
+        "pk": 54,
+        "fields": {
+            "endpoint_slug": "sophia-dev-vllm-openaigpt-oss-120b",
+            "cluster": "sophia-dev",
+            "framework": "vllm",
+            "model": "openai/gpt-oss-120b",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "52fe3e35-1257-49d8-a2ad-7a52b7989026",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea"
+            },
+            "allowed_globus_groups": [
+                "1f062359-426e-11f1-a9f4-0afff9a48337"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+		        "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 55,
+        "fields": {
+            "endpoint_slug": "sophia-dev-vllm-googlegemma-3-27b-it",
+            "cluster": "sophia-dev",
+            "framework": "vllm",
+            "model": "google/gemma-3-27b-it",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "cc946241-01ee-417f-98fd-d652ea028c87",
+                "function_uuid": "31acd824-edf6-4f53-933c-63b3b75bdbea"
+            },
+            "allowed_globus_groups": [
+                "1f062359-426e-11f1-a9f4-0afff9a48337"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+		        "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 56,
+        "fields": {
+            "endpoint_slug": "sophia-dev-vllm-load-testing-zero-sec",
+            "cluster": "sophia-dev",
+            "framework": "vllm",
+            "model": "load-testing-zero-sec",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "908b461b-7356-4cb2-b20e-d852d96de305",
+                "function_uuid": "33bdce2e-f151-42a2-b238-ff8da31f3d34"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+                "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 57,
+        "fields": {
+            "endpoint_slug": "sophia-dev-vllm-load-testing-thirty-sec",
+            "cluster": "sophia-dev",
+            "framework": "vllm",
+            "model": "load-testing-thirty-sec",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "908b461b-7356-4cb2-b20e-d852d96de305",
+                "function_uuid": "9e217357-051f-4332-9825-b4140479e7c1"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+                "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 58,
+        "fields": {
+            "endpoint_slug": "direct-api-dev-api-load-testing-zero-sec",
+            "cluster": "direct-api-dev",
+            "framework": "api",
+            "model": "load-testing-zero-sec",
+            "tpm_model": 0,
+            "tpm_user": 0,
             "endpoint_adapter": "resource_server_async.endpoints.direct_api.DirectAPIEndpoint",
             "config": {
-                "api_url": "http://127.0.0.1:8080",
-                "api_key_env_name": "YOUR_MODEL_120B_API_KEY"
-            }
+                "api_url": "http://127.0.0.1:8888/zero-sec",
+                "api_key_env_name": "LOAD_TESTING_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+                "anl.gov"
+            ]
+	}
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 59,
+        "fields": {
+            "endpoint_slug": "direct-api-dev-api-load-testing-thirty-sec",
+            "cluster": "direct-api-dev",
+            "framework": "api",
+            "model": "load-testing-thirty-sec",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.direct_api.DirectAPIEndpoint",
+            "config": {
+                "api_url": "http://127.0.0.1:8888/thirty-sec",
+                "api_key_env_name": "LOAD_TESTING_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+                "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 60,
+        "fields": {
+            "endpoint_slug": "sophia-dev-vllm-load-testing-two-sec",
+            "cluster": "sophia-dev",
+            "framework": "vllm",
+            "model": "load-testing-two-sec",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.globus_compute.GlobusComputeEndpoint",
+            "config": {
+                "api_port": 8000,
+                "endpoint_uuid": "908b461b-7356-4cb2-b20e-d852d96de305",
+                "function_uuid": "8bd0adbf-8803-4737-90da-ce0311a25494"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+                "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 61,
+        "fields": {
+            "endpoint_slug": "direct-api-dev-api-load-testing-two-sec",
+            "cluster": "direct-api-dev",
+            "framework": "api",
+            "model": "load-testing-two-sec",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.direct_api.DirectAPIEndpoint",
+            "config": {
+                "api_url": "http://127.0.0.1:8888/two-sec",
+                "api_key_env_name": "LOAD_TESTING_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "e0337c8a-9153-11ef-9fac-6f9995a83a2e"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+                "anl.gov"
+            ]
         }
     }
 ]
