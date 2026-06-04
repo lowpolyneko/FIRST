@@ -748,12 +748,6 @@ async def check_globus_compute() -> HealthRecord:
 
     try:
         await check()
-        return HealthRecord(
-            component="Globus Compute",
-            cluster="vm",
-            status=HealthStatus.HEALTHY,
-            detail="Client and Executor initialized successfully",
-        )
     except Exception as e:
         return HealthRecord(
             component="Globus Compute",
@@ -761,6 +755,13 @@ async def check_globus_compute() -> HealthRecord:
             status=HealthStatus.FAILED,
             detail=f"Initialization failed: {str(e)}",
         )
+
+    return HealthRecord(
+        component="Globus Compute",
+        cluster="vm",
+        status=HealthStatus.HEALTHY,
+        detail="Client and Executor initialized successfully",
+    )
 
 
 def group_records(records: Iterable[HealthRecord]) -> Dict[str, List[HealthRecord]]:
