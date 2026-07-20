@@ -1288,5 +1288,141 @@
                 "anl.gov"
             ]
         }
+    },
+        {
+        "model": "resource_server_async.endpoint",
+        "pk": 62,
+        "fields": {
+            "endpoint_slug": "metis-api-gemma-4-31b-it",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "gemma-4-31B-it",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_GPT_GEMMA_4_31B_IT_API_KEY"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 63,
+        "fields": {
+            "endpoint_slug": "metis-api-minimax-m27",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "MiniMax-M2.7",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_GPT_MINIMAX_M27_API_KEY"
+            },
+            "allowed_globus_groups": [
+                "8581127a-06b0-11f1-b123-0affecd7d007"
+            ],
+            "allowed_domains": [
+                "alcf.anl.gov",
+                "anl.gov"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 64,
+        "fields": {
+            "endpoint_slug": "metis-api-mistral-large-3-675b-instruct-2512",
+            "cluster": "metis",
+            "framework": "api",
+            "model": "Mistral-Large-3-675B-Instruct-2512",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.metis.MetisEndpoint",
+            "config": {
+                "api_url": "https://metis.alcf.anl.gov/v1",
+                "api_key_env_name": "METIS_GPT_MISTRAL_LARGE_3_675B_INSTRUCT_2512_API_KEY"
+            }
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 65,
+        "fields": {
+            "endpoint_slug": "minerva-api-glm-52",
+            "cluster": "minerva",
+            "framework": "api",
+            "model": "glm-5.2",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.minerva.MinervaEndpoint",
+            "config": {
+                "api_url": "https://minerva-login-01.minerva.alcf.anl.gov:9443/models/glm-5.2/v1",
+                "api_key_env_name": "MINERVA_DIRECT_API_KEY",
+                "api_request_timeout": 120,
+                "ca_cert_path": "/home/webportal/minerva-certs/pki/ca.crt",
+                "client_cert_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.crt",
+                "client_key_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.key",
+                "check_hostname": false,
+                "trust_env": false
+            },
+            "allowed_globus_groups": [
+                "1e943dcd-32ae-11f1-b41c-0e1cdb0e3035"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 66,
+        "fields": {
+            "endpoint_slug": "minerva-api-kimi-k26",
+            "cluster": "minerva",
+            "framework": "api",
+            "model": "kimi-k2.6",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.minerva.MinervaEndpoint",
+            "config": {
+                "api_url": "https://minerva-login-01.minerva.alcf.anl.gov:9443/models/kimi-k2.6/v1",
+                "api_key_env_name": "MINERVA_DIRECT_API_KEY",
+                "api_request_timeout": 120,
+                "ca_cert_path": "/home/webportal/minerva-certs/pki/ca.crt",
+                "client_cert_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.crt",
+                "client_key_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.key",
+                "check_hostname": false,
+                "trust_env": false
+            },
+            "allowed_globus_groups": [
+                "1e943dcd-32ae-11f1-b41c-0e1cdb0e3035"
+            ]
+        }
+    },
+    {
+        "model": "resource_server_async.endpoint",
+        "pk": 67,
+        "fields": {
+            "endpoint_slug": "minerva-api-nemotron-3-ultra",
+            "cluster": "minerva",
+            "framework": "api",
+            "model": "nemotron-3-ultra",
+            "tpm_model": 0,
+            "tpm_user": 0,
+            "endpoint_adapter": "resource_server_async.endpoints.minerva.MinervaEndpoint",
+            "config": {
+                "api_url": "https://minerva-login-01.minerva.alcf.anl.gov:9443/models/nemotron-3-ultra/v1",
+                "api_key_env_name": "MINERVA_DIRECT_API_KEY",
+                "api_request_timeout": 120,
+                "ca_cert_path": "/home/webportal/minerva-certs/pki/ca.crt",
+                "client_cert_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.crt",
+                "client_key_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.key",
+                "check_hostname": false,
+                "trust_env": false
+            },
+            "allowed_globus_groups": [
+                "1e943dcd-32ae-11f1-b41c-0e1cdb0e3035"
+            ]
+        }
     }
 ]

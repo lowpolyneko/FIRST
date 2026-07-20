@@ -68,7 +68,7 @@
             ],
             "allowed_domains": [
                 "alcf.anl.gov",
-		        "anl.gov"
+                "anl.gov"
             ]
         }
     },
@@ -93,7 +93,33 @@
             ],
             "allowed_domains": [
                 "alcf.anl.gov",
-		        "anl.gov"
+                "anl.gov"
+            ]
+	}
+    },
+    {
+        "model": "resource_server_async.cluster",
+        "pk": 5,
+        "fields": {
+            "cluster_name": "minerva",
+            "cluster_adapter": "resource_server_async.clusters.minerva.MinervaCluster",
+            "frameworks": [
+                "api"
+            ],
+            "openai_endpoints": [
+                "chat/completions",
+                "responses"
+            ],
+            "config": {
+                "status_url": "https://minerva-login-01.minerva.alcf.anl.gov:9443/status",
+                "ca_cert_path": "/home/webportal/minerva-certs/pki/ca.crt",
+                "client_cert_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.crt",
+                "client_key_path": "/home/webportal/minerva-certs/pki/data-portal-dev-vmw-01.key",
+                "check_hostname": false,
+                "trust_env": false
+            },
+            "allowed_globus_groups": [
+                "1e943dcd-32ae-11f1-b41c-0e1cdb0e3035"
             ]
         }
     }
