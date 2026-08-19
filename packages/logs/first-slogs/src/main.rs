@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, hash_map::Entry},
-    fs::{self, File, OpenOptions},
+    fs::{self, File},
     io::{self, BufWriter, Write},
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
@@ -40,23 +40,25 @@ fn mmap_outdated(path: &Path) -> io::Result<Option<Mmap>> {
     let file = File::open(path)?;
 
     let mtime = file.metadata()?.mtime();
-    let is_outdated = STREAMS
+    let mut stream_mtimes = STREAMS
         .iter()
         .filter_map(|s| {
             let p = path.with_added_extension(s);
             p.with_extension("ndjson");
             fs::metadata(p).ok().map(|m| m.mtime())
         })
-        .any(|m| mtime > m);
+        .peekable();
 
-    Ok(if is_outdated {
-        unsafe {
-            // SAFETY we assume the file is never modified at runtime
-            Some(Mmap::map(&file)?)
-        }
-    } else {
-        None
-    })
+    Ok(
+        if stream_mtimes.peek().is_none() || stream_mtimes.any(|m| mtime > m) {
+            unsafe {
+                // SAFETY we assume the file is never modified at runtime
+                Some(Mmap::map(&file)?)
+            }
+        } else {
+            None
+        },
+    )
 }
 
 fn split_log(path: &Path, buf: &[u8]) -> io::Result<HashMap<String, PathBuf>> {
@@ -74,9 +76,7 @@ fn split_log(path: &Path, buf: &[u8]) -> io::Result<HashMap<String, PathBuf>> {
                             let mut p = path.with_added_extension(stream);
                             p.add_extension("ndjson");
 
-                            let e = e.insert_entry(BufWriter::new(
-                                OpenOptions::new().append(true).create(true).open(&p)?,
-                            ));
+                            let e = e.insert_entry(BufWriter::new(File::create(&p)?));
 
                             partitions.insert(stream.to_string(), p);
                             e
