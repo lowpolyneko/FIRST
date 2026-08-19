@@ -11,3 +11,5 @@ memmap2 = "0.9.11"
 polars = { version = "0.54.4", features = ["json", "lazy", "parquet", "streaming", "strings"] }
 regex = "1.13.1"
 sonic-rs = "0.5.8"
+tar = "0.4.46"
+zeekstd = "0.6.2"
