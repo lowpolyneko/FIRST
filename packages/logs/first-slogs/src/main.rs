@@ -262,30 +262,39 @@ fn write_merged_request_metrics(
     Ok(request_metrics)
 }
 
-fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<PathBuf> {
-    let path = request_log.with_extension("large_requests.tar.zstd");
-    let file = File::create(&path)?;
-    let compressor = Encoder::new(file)?;
-    let mut archive = tar::Builder::new(compressor);
-
-    LazyFrame::scan_parquet(
+fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<Option<PathBuf>> {
+    let request_ids = LazyFrame::scan_parquet(
         PlRefPath::try_from_path(&request_log)?,
         ScanArgsParquet::default(),
     )?
     .select([col("id")])
-    .collect()?
-    .column("id")?
-    .str()?
-    .no_null_iter()
-    .map(|request_id| {
-        let mut path = large_requests.join(request_id);
-        path.set_extension("json");
-        path
-    })
-    .filter(|path| path.is_file())
-    .try_for_each(|path| archive.append_path_with_name(&path, path.file_name().unwrap()))?;
+    .collect()?;
 
-    Ok(path)
+    let mut requests = request_ids
+        .column("id")?
+        .str()?
+        .no_null_iter()
+        .map(|request_id| {
+            let mut path = large_requests.join(request_id);
+            path.set_extension("json");
+            path
+        })
+        .filter(|path| path.is_file())
+        .peekable();
+
+    if requests.peek().is_some() {
+        let path = request_log.with_extension("large_requests.tar.zstd");
+        let file = File::create(&path)?;
+        let compressor = Encoder::new(file)?;
+        let mut archive = tar::Builder::new(compressor);
+
+        requests
+            .try_for_each(|path| archive.append_path_with_name(&path, path.file_name().unwrap()))?;
+
+        Ok(Some(path))
+    } else {
+        Ok(None)
+    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -309,8 +318,10 @@ fn main() -> anyhow::Result<()> {
         if let Some(request_log) = partitions.get("request_log")
             && let Some(large_requests) = &args.large_requests
         {
-            let tarball = bundle_requests(request_log, large_requests)?;
-            println!("Dumped large requests to {}", tarball.display());
+            match bundle_requests(request_log, large_requests)? {
+                Some(tarball) => println!("Dumped large requests to {}", tarball.display()),
+                None => println!("No large requests to dump"),
+            }
         }
     }
 
