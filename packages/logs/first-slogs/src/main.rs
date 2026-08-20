@@ -1,4 +1,5 @@
 use std::{
+    cell::LazyCell,
     collections::{HashMap, hash_map::Entry},
     fs::{self, File},
     io::{self, BufWriter, Write},
@@ -6,12 +7,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use backhand::{FilesystemWriter, NodeHeader};
 use clap::Parser;
 use memmap2::Mmap;
 use polars::{
     df,
     error::PolarsResult,
-    frame::DataFrame,
+    frame::{DataFrame, UniqueKeepStrategy},
     prelude::{
         FileWriteFormat, IntoLazy, JoinCoalesce, JoinType, LazyFileListReader, LazyFrame,
         LazyJsonLineReader, ParquetWriteOptions, PlRefPath, ScanArgsParquet, SinkDestination,
@@ -20,7 +22,6 @@ use polars::{
 };
 use regex::regex;
 use sonic_rs::JsonValueTrait;
-use zeekstd::Encoder;
 
 const STREAMS: &[&str] = &[
     "access_log",
@@ -263,37 +264,39 @@ fn write_merged_request_metrics(
 }
 
 fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<Option<PathBuf>> {
-    let request_ids = LazyFrame::scan_parquet(
+    let mut squashfs = LazyFrame::scan_parquet(
         PlRefPath::try_from_path(&request_log)?,
         ScanArgsParquet::default(),
     )?
     .select([col("id")])
-    .collect()?;
-
-    let mut requests = request_ids
-        .column("id")?
-        .str()?
-        .no_null_iter()
-        .map(|request_id| {
+    .unique(None, UniqueKeepStrategy::Any)
+    .collect()?
+    .column("id")?
+    .str()?
+    .no_null_iter()
+    .try_fold(
+        LazyCell::new(|| FilesystemWriter::default()),
+        |mut fs, request_id| -> anyhow::Result<_> {
             let mut path = large_requests.join(request_id);
             path.set_extension("json");
-            path
-        })
-        .filter(|path| path.is_file())
-        .peekable();
 
-    if requests.peek().is_some() {
-        let path = request_log.with_extension("large_requests.tar.zstd");
-        let file = File::create(&path)?;
-        let compressor = Encoder::new(file)?;
-        let mut archive = tar::Builder::new(compressor);
+            if let Some(f) = File::open(&path).ok() {
+                fs.push_file(f, path.file_name().unwrap(), NodeHeader::default())?;
+            }
 
-        requests
-            .try_for_each(|path| archive.append_path_with_name(&path, path.file_name().unwrap()))?;
+            Ok(fs)
+        },
+    )?;
 
-        Ok(Some(path))
-    } else {
-        Ok(None)
+    match LazyCell::get_mut(&mut squashfs) {
+        Some(fs) => {
+            let path = request_log.with_extension("large_requests.squashfs");
+            let mut file = File::create(&path)?;
+            fs.write(&mut file)?;
+
+            Ok(Some(path))
+        }
+        None => Ok(None),
     }
 }
 
