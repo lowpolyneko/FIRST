@@ -5,9 +5,10 @@ use std::{
     io::{self, BufWriter, Write},
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
-use backhand::{FilesystemWriter, NodeHeader};
+use backhand::{FilesystemCompressor, FilesystemWriter, NodeHeader, compression::Compressor};
 use clap::Parser;
 use memmap2::Mmap;
 use polars::{
@@ -264,6 +265,10 @@ fn write_merged_request_metrics(
 }
 
 fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<Option<PathBuf>> {
+    let uid = unsafe { libc::getuid() };
+    let gid = unsafe { libc::getgid() };
+    let mtime = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as u32;
+
     let mut squashfs = LazyFrame::scan_parquet(
         PlRefPath::try_from_path(&request_log)?,
         ScanArgsParquet::default(),
@@ -275,13 +280,43 @@ fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<
     .str()?
     .no_null_iter()
     .try_fold(
-        LazyCell::new(|| FilesystemWriter::default()),
+        LazyCell::new(|| {
+            let mut fs = FilesystemWriter::default();
+            fs.set_compressor(FilesystemCompressor::new(Compressor::Zstd, None).unwrap());
+            fs.set_root_uid(uid);
+            fs.set_root_gid(gid);
+            fs.set_root_mode(0o755);
+            fs.set_time(mtime);
+            fs
+        }),
         |mut fs, request_id| -> anyhow::Result<_> {
-            let mut path = large_requests.join(request_id);
-            path.set_extension("json");
+            let mut json = large_requests.join(request_id);
+            json.set_extension("json");
 
-            if let Some(f) = File::open(&path).ok() {
-                fs.push_file(f, path.file_name().unwrap(), NodeHeader::default())?;
+            let mut path = Path::new(&request_id[0..2]).join(&request_id[2..4]);
+
+            if let Some(f) = File::open(&json).ok() {
+                fs.push_dir_all(
+                    &path,
+                    NodeHeader {
+                        permissions: 0o755,
+                        uid,
+                        gid,
+                        mtime,
+                    },
+                )?;
+                path.push(json.file_name().unwrap());
+
+                fs.push_file(
+                    f,
+                    path,
+                    NodeHeader {
+                        permissions: 0o644,
+                        uid,
+                        gid,
+                        mtime,
+                    },
+                )?;
             }
 
             Ok(fs)
