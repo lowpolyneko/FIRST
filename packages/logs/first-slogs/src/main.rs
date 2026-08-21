@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use backhand::{FilesystemWriter, NodeHeader};
+use backhand::{FilesystemCompressor, FilesystemWriter, NodeHeader, compression::Compressor};
 use clap::Parser;
 use memmap2::Mmap;
 use polars::{
@@ -275,7 +275,14 @@ fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<
     .str()?
     .no_null_iter()
     .try_fold(
-        LazyCell::new(|| FilesystemWriter::default()),
+        LazyCell::new(|| {
+            let mut fs = FilesystemWriter::default();
+            fs.set_compressor(FilesystemCompressor::new(Compressor::Zstd, None).unwrap());
+            fs.set_only_root_id();
+            fs.set_root_mode(0o755);
+            fs.set_current_time();
+            fs
+        }),
         |mut fs, request_id| -> anyhow::Result<_> {
             let mut path = large_requests.join(request_id);
             path.set_extension("json");
