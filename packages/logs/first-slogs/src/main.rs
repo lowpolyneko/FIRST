@@ -2,7 +2,7 @@ use std::{
     cell::LazyCell,
     collections::{HashMap, hash_map::Entry},
     fs::{self, File},
-    io::{self, BufWriter, Write},
+    io::{self, BufWriter, Cursor, Write},
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -295,7 +295,7 @@ fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<
 
             let mut path = Path::new(&request_id[0..2]).join(&request_id[2..4]);
 
-            if let Some(f) = File::open(&json).ok() {
+            if let Ok(buf) = fs::read(&json) {
                 fs.push_dir_all(
                     &path,
                     NodeHeader {
@@ -308,7 +308,7 @@ fn bundle_requests(request_log: &Path, large_requests: &Path) -> anyhow::Result<
                 path.push(json.file_name().unwrap());
 
                 fs.push_file(
-                    f,
+                    Cursor::new(buf),
                     path,
                     NodeHeader {
                         permissions: 0o644,
