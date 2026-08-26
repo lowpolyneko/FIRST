@@ -1,20 +1,20 @@
-#!/usr/bin/env python
 
 import datetime
-import holoviews as hv
+
 import hvplot.polars
 import polars as pl
-
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import StrMethodFormatter
 
+from . import recipe
 
-def plot_top_20_users_all_time(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+
+@recipe("inference")
+
+def plot_top_20_users_all_time(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("user.name", "total_tokens")
         .group_by("user.name")
         .agg(pl.col("total_tokens").sum())
@@ -34,12 +34,12 @@ def plot_top_20_users_all_time(
     hvplot.save(plot, "top_20_users_all_time.svg")
 
 
-def plot_top_20_users_one_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("inference")
+
+def plot_top_20_users_one_month(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("user.name", "total_tokens", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
@@ -71,9 +71,11 @@ def plot_top_20_users_one_month(
     hvplot.save(plot, "top_20_users_one_month.svg")
 
 
-def plot_top_models_all_time(metrics: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_top_models_all_time(load_data) -> None:
     plot = (
-        metrics.select("model", "total_tokens")
+        load_data("metrics").select("model", "total_tokens")
         .group_by("model")
         .agg(pl.col("total_tokens").sum())
         .sort("total_tokens", descending=True)
@@ -92,9 +94,11 @@ def plot_top_models_all_time(metrics: pl.LazyFrame) -> None:
     hvplot.save(plot, "top_models_all_time.svg")
 
 
-def plot_top_models_one_month(metrics: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_top_models_one_month(load_data) -> None:
     plot = (
-        metrics.select("model", "timestamp_compute_request")
+        load_data("metrics").select("model", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -124,9 +128,11 @@ def plot_top_models_one_month(metrics: pl.LazyFrame) -> None:
     hvplot.save(plot, "top_models_one_month.svg")
 
 
-def plot_top_models_six_month(metrics: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_top_models_six_month(load_data) -> None:
     plot = (
-        metrics.select("model", "total_tokens", "timestamp_compute_request")
+        load_data("metrics").select("model", "total_tokens", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -157,12 +163,12 @@ def plot_top_models_six_month(metrics: pl.LazyFrame) -> None:
     hvplot.save(plot, "top_models_six_month.svg")
 
 
-def plot_top_models_by_users_all_time(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("inference")
+
+def plot_top_models_by_users_all_time(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("user.name", "model", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
@@ -188,12 +194,12 @@ def plot_top_models_by_users_all_time(
     hvplot.save(plot, "top_models_by_users_all_time.svg")
 
 
-def plot_top_models_by_users_one_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("inference")
+
+def plot_top_models_by_users_one_month(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("user.name", "model", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
@@ -225,10 +231,12 @@ def plot_top_models_by_users_one_month(
     hvplot.save(plot, "top_models_by_users_one_month.svg")
 
 
-def plot_users_served_all_time(access_log: pl.LazyFrame, user: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_users_served_all_time(load_data) -> None:
     plot = (
-        access_log.join(
-            user.unique(subset="id"), left_on="user.id", right_on="id", suffix="_u"
+        load_data("access_log").join(
+            load_data("user").unique(subset="id"), left_on="user.id", right_on="id", suffix="_u"
         )
         .select("user.name", "timestamp_request")
         .with_columns(
@@ -257,10 +265,12 @@ def plot_users_served_all_time(access_log: pl.LazyFrame, user: pl.LazyFrame) -> 
     hvplot.save(plot, "users_served_all_time.svg")
 
 
-def plot_users_served_six_month(access_log: pl.LazyFrame, user: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_users_served_six_month(load_data) -> None:
     plot = (
-        access_log.join(
-            user.unique(subset="id"), left_on="user.id", right_on="id", suffix="_u"
+        load_data("access_log").join(
+            load_data("user").unique(subset="id"), left_on="user.id", right_on="id", suffix="_u"
         )
         .select("user.name", "timestamp_request")
         .with_columns(
@@ -307,10 +317,12 @@ def plot_users_served_six_month(access_log: pl.LazyFrame, user: pl.LazyFrame) ->
     hvplot.save(plot, "users_served_six_month.svg")
 
 
-def plot_users_served_one_month(access_log: pl.LazyFrame, user: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_users_served_one_month(load_data) -> None:
     plot = (
-        access_log.join(
-            user.unique(subset="id"), left_on="user.id", right_on="id", suffix="_u"
+        load_data("access_log").join(
+            load_data("user").unique(subset="id"), left_on="user.id", right_on="id", suffix="_u"
         )
         .select("user.name", "timestamp_request")
         .with_columns(
@@ -357,9 +369,11 @@ def plot_users_served_one_month(access_log: pl.LazyFrame, user: pl.LazyFrame) ->
     hvplot.save(plot, "users_served_one_month.svg")
 
 
-def plot_requests_all_time(metrics: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_requests_all_time(load_data) -> None:
     plot = (
-        metrics.select("timestamp_compute_request")
+        load_data("metrics").select("timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request").str.to_datetime(time_zone="UTC")
         )
@@ -379,9 +393,11 @@ def plot_requests_all_time(metrics: pl.LazyFrame) -> None:
     hvplot.save(plot, "requests_all_time.svg")
 
 
-def plot_requests_six_month(metrics: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_requests_six_month(load_data) -> None:
     plot = (
-        metrics.select("timestamp_compute_request")
+        load_data("metrics").select("timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request").str.to_datetime(time_zone="UTC")
         )
@@ -419,9 +435,11 @@ def plot_requests_six_month(metrics: pl.LazyFrame) -> None:
     hvplot.save(plot, "requests_six_month.svg")
 
 
-def plot_requests_one_month(metrics: pl.LazyFrame) -> None:
+@recipe("inference")
+
+def plot_requests_one_month(load_data) -> None:
     plot = (
-        metrics.select("timestamp_compute_request")
+        load_data("metrics").select("timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request").str.to_datetime(time_zone="UTC")
         )
@@ -460,12 +478,12 @@ def plot_requests_one_month(metrics: pl.LazyFrame) -> None:
     hvplot.save(plot, "requests_one_month.svg")
 
 
-def plot_top_20_users_six_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("inference")
+
+def plot_top_20_users_six_month(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("user.name", "total_tokens", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
@@ -497,12 +515,12 @@ def plot_top_20_users_six_month(
     hvplot.save(plot, "top_20_users_six_month.svg")
 
 
-def plot_top_models_by_users_six_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("inference")
+
+def plot_top_models_by_users_six_month(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("user.name", "model", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
@@ -532,43 +550,3 @@ def plot_top_models_by_users_six_month(
     )
 
     hvplot.save(plot, "top_models_by_users_six_month.svg")
-
-
-def main() -> None:
-    hv.extension("matplotlib")
-
-    access_log = pl.scan_parquet(
-        "logs/*.access_log.parquet", missing_columns="insert", extra_columns="ignore"
-    )
-    request_log = pl.scan_parquet(
-        "logs/*.request_log.parquet", missing_columns="insert", extra_columns="ignore"
-    )
-    metrics = pl.scan_parquet(
-        "logs/*.request_metrics.parquet",
-        missing_columns="insert",
-        extra_columns="ignore",
-    )
-
-    user = pl.scan_parquet("logs/*.user.parquet")
-
-    plot_requests_all_time(metrics)
-    plot_requests_six_month(metrics)
-    plot_requests_one_month(metrics)
-    plot_top_models_all_time(metrics)
-    plot_top_models_six_month(metrics)
-    plot_top_20_users_six_month(metrics, request_log, user)
-    plot_top_models_by_users_six_month(metrics, request_log, user)
-    plot_top_20_users_all_time(metrics, request_log, user)
-    plot_top_20_users_one_month(metrics, request_log, user)
-    plot_users_served_all_time(access_log, user)
-    plot_users_served_six_month(access_log, user)
-    plot_users_served_one_month(access_log, user)
-    plot_top_models_one_month(metrics)
-    plot_top_models_by_users_all_time(metrics, request_log, user)
-    plot_top_models_by_users_one_month(metrics, request_log, user)
-    # metrics.sum().sink_csv("metrics.csv")
-    # user.unique(subset="id").sink_ndjson("user.ndjson")
-
-
-if __name__ == "__main__":
-    main()

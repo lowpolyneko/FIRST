@@ -1,17 +1,18 @@
-#!/usr/bin/env python
 
 import datetime
+
 import holoviews as hv
-import hvplot.polars
 import polars as pl
 
+from . import recipe
 
-def plot_requests_by_institution_all_time(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+
+@recipe("institution")
+
+def plot_requests_by_institution_all_time(load_data) -> None:
     aggregated = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select(
             pl.col("timestamp_compute_request"),
             pl.col("username").alias("user_username"),
@@ -86,12 +87,12 @@ def plot_requests_by_institution_all_time(
     fig.savefig("requests_by_institution_all_time.svg")
 
 
-def plot_requests_by_institution_six_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("institution")
+
+def plot_requests_by_institution_six_month(load_data) -> None:
     aggregated = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select(
             pl.col("timestamp_compute_request"),
             pl.col("username").alias("user_username"),
@@ -161,12 +162,12 @@ def plot_requests_by_institution_six_month(
     fig.savefig("requests_by_institution_six_month.svg")
 
 
-def plot_requests_by_institution_one_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("institution")
+
+def plot_requests_by_institution_one_month(load_data) -> None:
     aggregated = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select(
             pl.col("timestamp_compute_request"),
             pl.col("username").alias("user_username"),
@@ -224,25 +225,3 @@ def plot_requests_by_institution_one_month(
     ax.set_xticklabels([str(d) for d in day_centers], rotation=45, ha="right")
     fig.tight_layout()
     fig.savefig("requests_by_institution_one_month.svg")
-
-
-def main() -> None:
-    hv.extension("matplotlib")
-
-    request_log = pl.scan_parquet(
-        "logs/*.request_log.parquet", missing_columns="insert", extra_columns="ignore"
-    )
-    metrics = pl.scan_parquet(
-        "logs/*.request_metrics.parquet",
-        missing_columns="insert",
-        extra_columns="ignore",
-    )
-    user = pl.scan_parquet("logs/*.user.parquet")
-
-    plot_requests_by_institution_all_time(metrics, request_log, user)
-    plot_requests_by_institution_six_month(metrics, request_log, user)
-    plot_requests_by_institution_one_month(metrics, request_log, user)
-
-
-if __name__ == "__main__":
-    main()

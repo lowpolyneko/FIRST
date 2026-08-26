@@ -1,14 +1,17 @@
-#!/usr/bin/env python
 
 import datetime
+
 import holoviews as hv
-import hvplot.polars
 import polars as pl
 
+from . import recipe
 
-def plot_requests_by_status_all_time(metrics: pl.LazyFrame) -> None:
+
+@recipe("status")
+
+def plot_requests_by_status_all_time(load_data) -> None:
     aggregated = (
-        metrics.select("status_code", "timestamp_compute_request")
+        load_data("metrics").select("status_code", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -73,9 +76,11 @@ def plot_requests_by_status_all_time(metrics: pl.LazyFrame) -> None:
     fig.savefig("requests_by_status_all_time.svg")
 
 
-def plot_requests_by_status_six_month(metrics: pl.LazyFrame) -> None:
+@recipe("status")
+
+def plot_requests_by_status_six_month(load_data) -> None:
     aggregated = (
-        metrics.select("status_code", "timestamp_compute_request")
+        load_data("metrics").select("status_code", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -138,9 +143,11 @@ def plot_requests_by_status_six_month(metrics: pl.LazyFrame) -> None:
     fig.savefig("requests_by_status_six_month.svg")
 
 
-def plot_requests_by_status_one_month(metrics: pl.LazyFrame) -> None:
+@recipe("status")
+
+def plot_requests_by_status_one_month(load_data) -> None:
     aggregated = (
-        metrics.select("status_code", "timestamp_compute_request")
+        load_data("metrics").select("status_code", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -191,21 +198,3 @@ def plot_requests_by_status_one_month(metrics: pl.LazyFrame) -> None:
     ax.set_xticklabels([str(d) for d in day_centers], rotation=45, ha="right")
     fig.tight_layout()
     fig.savefig("requests_by_status_one_month.svg")
-
-
-def main() -> None:
-    hv.extension("matplotlib")
-
-    metrics = pl.scan_parquet(
-        "logs/*.request_metrics.parquet",
-        missing_columns="insert",
-        extra_columns="ignore",
-    )
-
-    plot_requests_by_status_all_time(metrics)
-    plot_requests_by_status_six_month(metrics)
-    plot_requests_by_status_one_month(metrics)
-
-
-if __name__ == "__main__":
-    main()

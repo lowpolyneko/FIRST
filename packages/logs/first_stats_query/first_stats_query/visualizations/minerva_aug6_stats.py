@@ -1,23 +1,23 @@
-#!/usr/bin/env python
 
 import datetime
-import holoviews as hv
+
 import hvplot.polars
 import polars as pl
-
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import StrMethodFormatter
 
+from . import recipe
 
-def plot_top_20_users_minerva_aug6_12pm_7pm_cst(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+
+@recipe("minerva")
+
+def plot_top_20_users_minerva_aug6_12pm_7pm_cst(load_data) -> None:
     plot = (
-        metrics.join(
-            request_log, how="left", left_on="request_id", right_on="id", suffix="_rl"
+        load_data("metrics").join(
+            load_data("request_log"), how="left", left_on="request_id", right_on="id", suffix="_rl"
         )
         .join(
-            user.unique(subset="id"),
+            load_data("user").unique(subset="id"),
             how="left",
             left_on="user_id",
             right_on="id",
@@ -55,11 +55,11 @@ def plot_top_20_users_minerva_aug6_12pm_7pm_cst(
     hvplot.save(plot, "top_20_users_minerva_aug6_12pm_7pm_cst.svg")
 
 
-def plot_top_models_total_tokens_minerva_aug6_12pm_7pm_cst(
-    metrics: pl.LazyFrame,
-) -> None:
+@recipe("minerva")
+
+def plot_top_models_total_tokens_minerva_aug6_12pm_7pm_cst(load_data) -> None:
     plot = (
-        metrics.select("model", "total_tokens", "timestamp_compute_request", "cluster")
+        load_data("metrics").select("model", "total_tokens", "timestamp_compute_request", "cluster")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -91,11 +91,11 @@ def plot_top_models_total_tokens_minerva_aug6_12pm_7pm_cst(
     hvplot.save(plot, "top_models_total_tokens_minerva_aug6_12pm_7pm_cst.svg")
 
 
-def plot_top_models_request_count_minerva_aug6_12pm_7pm_cst(
-    metrics: pl.LazyFrame,
-) -> None:
+@recipe("minerva")
+
+def plot_top_models_request_count_minerva_aug6_12pm_7pm_cst(load_data) -> None:
     plot = (
-        metrics.select("model", "timestamp_compute_request", "cluster")
+        load_data("metrics").select("model", "timestamp_compute_request", "cluster")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -126,15 +126,15 @@ def plot_top_models_request_count_minerva_aug6_12pm_7pm_cst(
     hvplot.save(plot, "top_models_request_count_minerva_aug6_12pm_7pm_cst.svg")
 
 
-def plot_top_models_unique_users_minerva_aug6_12pm_7pm_cst(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("minerva")
+
+def plot_top_models_unique_users_minerva_aug6_12pm_7pm_cst(load_data) -> None:
     plot = (
-        metrics.join(
-            request_log, how="left", left_on="request_id", right_on="id", suffix="_rl"
+        load_data("metrics").join(
+            load_data("request_log"), how="left", left_on="request_id", right_on="id", suffix="_rl"
         )
         .join(
-            user.unique(subset="id"),
+            load_data("user").unique(subset="id"),
             how="left",
             left_on="user_id",
             right_on="id",
@@ -172,12 +172,12 @@ def plot_top_models_unique_users_minerva_aug6_12pm_7pm_cst(
     hvplot.save(plot, "top_models_unique_users_minerva_aug6_12pm_7pm_cst.svg")
 
 
-def plot_users_served_minerva_aug6_12pm_7pm_cst(
-    access_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("minerva")
+
+def plot_users_served_minerva_aug6_12pm_7pm_cst(load_data) -> None:
     plot = (
-        access_log.join(
-            user.unique(subset="id"),
+        load_data("access_log").join(
+            load_data("user").unique(subset="id"),
             how="left",
             left_on="user.id",
             right_on="id",
@@ -219,9 +219,11 @@ def plot_users_served_minerva_aug6_12pm_7pm_cst(
     hvplot.save(plot, "users_served_minerva_aug6_12pm_7pm_cst.svg")
 
 
-def plot_requests_minerva_aug6_12pm_7pm_cst(metrics: pl.LazyFrame) -> None:
+@recipe("minerva")
+
+def plot_requests_minerva_aug6_12pm_7pm_cst(load_data) -> None:
     plot = (
-        metrics.select("timestamp_compute_request", "cluster")
+        load_data("metrics").select("timestamp_compute_request", "cluster")
         .with_columns(
             pl.col("timestamp_compute_request").str.to_datetime(time_zone="UTC")
         )
@@ -250,41 +252,3 @@ def plot_requests_minerva_aug6_12pm_7pm_cst(metrics: pl.LazyFrame) -> None:
     )
 
     hvplot.save(plot, "requests_minerva_aug6_12pm_7pm_cst.svg")
-
-
-def main() -> None:
-    hv.extension("matplotlib")
-
-    access_log = pl.scan_parquet(
-        "logs/*2026-08-06.access_log.parquet",
-        # missing_columns="insert",
-        # extra_columns="ignore",
-    )
-    request_log = pl.scan_parquet(
-        "logs/*2026-08-06.request_log.parquet",
-        # missing_columns="insert",
-        # extra_columns="ignore",
-    )
-    metrics = pl.scan_parquet(
-        "logs/*2026-08-06.request_metrics.parquet",
-        # missing_columns="insert",
-        # extra_columns="ignore",
-    )
-
-    user = pl.scan_parquet("logs/*2026-08-06.user.parquet")
-
-    plot_top_20_users_minerva_aug6_12pm_7pm_cst(metrics, request_log, user)
-    plot_top_models_total_tokens_minerva_aug6_12pm_7pm_cst(metrics)
-    plot_top_models_request_count_minerva_aug6_12pm_7pm_cst(metrics)
-    plot_top_models_unique_users_minerva_aug6_12pm_7pm_cst(metrics, request_log, user)
-    plot_users_served_minerva_aug6_12pm_7pm_cst(access_log, user)
-    plot_requests_minerva_aug6_12pm_7pm_cst(metrics)
-
-    metrics.lazy().filter(pl.col("cluster").eq("minerva")).sink_csv("metrics.csv")
-
-    # metrics.sum().sink_csv("metrics.csv")
-    # user.unique(subset="id").sink_ndjson("user.ndjson")
-
-
-if __name__ == "__main__":
-    main()

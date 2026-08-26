@@ -1,14 +1,17 @@
-#!/usr/bin/env python
 
 import datetime
+
 import holoviews as hv
-import hvplot.polars
 import polars as pl
 
+from . import recipe
 
-def plot_token_breakdown_by_cluster_six_month(metrics: pl.LazyFrame) -> None:
+
+@recipe("token-breakdown")
+
+def plot_token_breakdown_by_cluster_six_month(load_data) -> None:
     aggregated = (
-        metrics.select(
+        load_data("metrics").select(
             "cluster",
             "prompt_tokens",
             "completion_tokens",
@@ -77,9 +80,11 @@ def plot_token_breakdown_by_cluster_six_month(metrics: pl.LazyFrame) -> None:
         fig.savefig(f"token_breakdown_{cluster}_six_month.svg")
 
 
-def plot_token_breakdown_by_cluster_one_month(metrics: pl.LazyFrame) -> None:
+@recipe("token-breakdown")
+
+def plot_token_breakdown_by_cluster_one_month(load_data) -> None:
     aggregated = (
-        metrics.select(
+        load_data("metrics").select(
             "cluster",
             "prompt_tokens",
             "completion_tokens",
@@ -138,20 +143,3 @@ def plot_token_breakdown_by_cluster_one_month(metrics: pl.LazyFrame) -> None:
         plot_state = renderer.get_plot(plot)
         fig = plot_state.state
         fig.savefig(f"token_breakdown_{cluster}_one_month.svg")
-
-
-def main() -> None:
-    hv.extension("matplotlib")
-
-    metrics = pl.scan_parquet(
-        "logs/*.request_metrics.parquet",
-        missing_columns="insert",
-        extra_columns="ignore",
-    )
-
-    plot_token_breakdown_by_cluster_six_month(metrics)
-    plot_token_breakdown_by_cluster_one_month(metrics)
-
-
-if __name__ == "__main__":
-    main()

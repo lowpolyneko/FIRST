@@ -1,14 +1,17 @@
-#!/usr/bin/env python
 
 import datetime
+
 import holoviews as hv
-import hvplot.polars
 import polars as pl
 
+from . import recipe
 
-def plot_tokens_by_cluster_six_month(metrics: pl.LazyFrame) -> None:
+
+@recipe("cluster")
+
+def plot_tokens_by_cluster_six_month(load_data) -> None:
     plot = (
-        metrics.select("cluster", "total_tokens", "timestamp_compute_request")
+        load_data("metrics").select("cluster", "total_tokens", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -53,9 +56,11 @@ def plot_tokens_by_cluster_six_month(metrics: pl.LazyFrame) -> None:
     fig.savefig("tokens_by_cluster_six_month.svg")
 
 
-def plot_requests_by_cluster_six_month(metrics: pl.LazyFrame) -> None:
+@recipe("cluster")
+
+def plot_requests_by_cluster_six_month(load_data) -> None:
     plot = (
-        metrics.select("cluster", "timestamp_compute_request")
+        load_data("metrics").select("cluster", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -100,12 +105,12 @@ def plot_requests_by_cluster_six_month(metrics: pl.LazyFrame) -> None:
     fig.savefig("requests_by_cluster_six_month.svg")
 
 
-def plot_users_by_cluster_six_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("cluster")
+
+def plot_users_by_cluster_six_month(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("cluster", "user.name", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
@@ -152,9 +157,11 @@ def plot_users_by_cluster_six_month(
     fig.savefig("users_by_cluster_six_month.svg")
 
 
-def plot_tokens_by_cluster_one_month(metrics: pl.LazyFrame) -> None:
+@recipe("cluster")
+
+def plot_tokens_by_cluster_one_month(load_data) -> None:
     plot = (
-        metrics.select("cluster", "total_tokens", "timestamp_compute_request")
+        load_data("metrics").select("cluster", "total_tokens", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -197,9 +204,11 @@ def plot_tokens_by_cluster_one_month(metrics: pl.LazyFrame) -> None:
     fig.savefig("tokens_by_cluster_one_month.svg")
 
 
-def plot_requests_by_cluster_one_month(metrics: pl.LazyFrame) -> None:
+@recipe("cluster")
+
+def plot_requests_by_cluster_one_month(load_data) -> None:
     plot = (
-        metrics.select("cluster", "timestamp_compute_request")
+        load_data("metrics").select("cluster", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
             .str.head(19)
@@ -242,12 +251,12 @@ def plot_requests_by_cluster_one_month(metrics: pl.LazyFrame) -> None:
     fig.savefig("requests_by_cluster_one_month.svg")
 
 
-def plot_users_by_cluster_one_month(
-    metrics: pl.LazyFrame, request_log: pl.LazyFrame, user: pl.LazyFrame
-) -> None:
+@recipe("cluster")
+
+def plot_users_by_cluster_one_month(load_data) -> None:
     plot = (
-        metrics.join(request_log, left_on="request_id", right_on="id", suffix="_rl")
-        .join(user.unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
+        load_data("metrics").join(load_data("request_log"), left_on="request_id", right_on="id", suffix="_rl")
+        .join(load_data("user").unique(subset="id"), left_on="user_id", right_on="id", suffix="_u")
         .select("cluster", "user.name", "timestamp_compute_request")
         .with_columns(
             pl.col("timestamp_compute_request")
@@ -290,29 +299,3 @@ def plot_users_by_cluster_one_month(
     ax.set_xticklabels([str(d) for d in range(1, 32)])
     fig.legend(loc="upper right", bbox_to_anchor=(0.85, 0.85))
     fig.savefig("users_by_cluster_one_month.svg")
-
-
-def main() -> None:
-    hv.extension("matplotlib")
-
-    request_log = pl.scan_parquet(
-        "logs/*.request_log.parquet", missing_columns="insert", extra_columns="ignore"
-    )
-    metrics = pl.scan_parquet(
-        "logs/*.request_metrics.parquet",
-        missing_columns="insert",
-        extra_columns="ignore",
-    )
-
-    user = pl.scan_parquet("logs/*.user.parquet")
-
-    plot_tokens_by_cluster_six_month(metrics)
-    plot_requests_by_cluster_six_month(metrics)
-    plot_users_by_cluster_six_month(metrics, request_log, user)
-    plot_tokens_by_cluster_one_month(metrics)
-    plot_requests_by_cluster_one_month(metrics)
-    plot_users_by_cluster_one_month(metrics, request_log, user)
-
-
-if __name__ == "__main__":
-    main()
