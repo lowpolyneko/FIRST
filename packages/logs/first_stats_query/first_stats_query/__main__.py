@@ -3,6 +3,8 @@
 import argparse
 import datetime
 
+import polars as pl
+
 # Import to trigger recipe registration
 import first_stats_query.visualizations.cluster_stats  # noqa: F401
 import first_stats_query.visualizations.inference_overview  # noqa: F401
@@ -10,13 +12,12 @@ import first_stats_query.visualizations.institution_stats  # noqa: F401
 import first_stats_query.visualizations.status_code_stats  # noqa: F401
 import first_stats_query.visualizations.token_breakdown  # noqa: F401
 
+from .tables import STREAMS, generate_table
 from .visualizations import get_recipes
 
 
-def load_data(dataset_dir: str, name: str):
+def load_data(dataset_dir: str, name: str) -> pl.LazyFrame:
     """Load a dataset by name from the given directory."""
-    import polars as pl
-
     match name:
         case "metrics":
             return pl.scan_parquet(
@@ -86,14 +87,21 @@ def _resolve_window(
     return (start_dt, end_dt)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Stats query CLI")
-    parser.add_argument("dataset_dir", help="Path to the dataset directory")
-    parser.add_argument(
-        "--help-categories",
-        action="store_true",
-        help="List available categories and recipes",
-    )
+def _resolve_window_start_end(
+    args: argparse.Namespace,
+) -> tuple[datetime.datetime | None, datetime.datetime | None]:
+    """Resolve the time window from a subcommand's --period/--start/--end options."""
+    if args.period:
+        return _resolve_window(args.period, args.start, args.end)
+    if args.start and args.end:
+        return (_parse_datetime(args.start), _parse_datetime(args.end))
+    return (None, None)
+
+
+def _add_window_args(
+    parser: argparse.ArgumentParser, *, granularity: bool = False
+) -> None:
+    """Add shared window selection options to a subparser."""
     parser.add_argument(
         "--period",
         type=str,
@@ -117,51 +125,28 @@ def main() -> None:
         "overrides the preset end for --period, or pairs with --start for a custom range",
     )
     parser.add_argument(
-        "--granularity",
-        type=str,
-        choices=["daily", "monthly", "yearly", "auto"],
-        default=None,
-        help="Time bucket for chart (auto uses period default)",
-    )
-    parser.add_argument(
         "--cluster",
         type=str,
         default=None,
         help="Filter to a single cluster (e.g. minerva)",
     )
-
-    recipes = get_recipes()
-    subparsers = parser.add_subparsers(dest="category")
-
-    for cat, recipe_list in recipes.items():
-        cat_parser = subparsers.add_parser(cat)
-        cat_parser.add_argument(
-            "recipe",
-            nargs="?",
-            choices=[r[0] for r in recipe_list] + ["all"],
-            default="all",
+    if granularity:
+        parser.add_argument(
+            "--granularity",
+            type=str,
+            choices=["daily", "monthly", "yearly", "auto"],
+            default=None,
+            help="Time bucket for chart (auto uses period default)",
         )
 
-    args = parser.parse_args()
 
+def _run_visualize(args: argparse.Namespace, recipes: dict[str, list]) -> None:
+    """Run graph recipes under the given category/recipe choice."""
     if args.help_categories:
         _print_recipes(recipes)
         return
 
-    if args.category is None:
-        parser.print_help()
-        return
-
-    # Resolve a span preset to a concrete window (or parse custom dates)
-    start: datetime.datetime | None = None
-    end: datetime.datetime | None = None
-
-    if args.period:
-        start, end = _resolve_window(args.period, args.start, args.end)
-    elif args.start and args.end:
-        start = _parse_datetime(args.start)
-        end = _parse_datetime(args.end)
-
+    start, end = _resolve_window_start_end(args)
     recipe_list = recipes[args.category]
 
     for name, func in recipe_list:
@@ -171,6 +156,93 @@ def main() -> None:
             func(load_data_func, start, end, granularity, args.cluster)
         if args.recipe == name:
             break
+
+
+def _run_table(args: argparse.Namespace) -> None:
+    """Print rows from an ingested stream, filtered by the requested ranges."""
+    start, end = _resolve_window_start_end(args)
+    columns = args.columns.split(",") if args.columns else None
+
+    def base_load(name: str) -> pl.LazyFrame:
+        return load_data(args.dataset_dir, name)
+
+    generate_table(
+        base_load,
+        args.stream,
+        start,
+        end,
+        args.cluster,
+        columns=columns,
+        limit=args.limit,
+        sort=args.sort,
+        fmt=args.format,
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Stats query CLI")
+    parser.add_argument("dataset_dir", help="Path to the dataset directory")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    visualize = subparsers.add_parser(
+        "visualize", help="Generate graph recipes from a dataset"
+    )
+    visualize.add_argument(
+        "--help-categories",
+        action="store_true",
+        help="List available categories and recipes",
+    )
+
+    recipes = get_recipes()
+    viz_cats = visualize.add_subparsers(dest="category")
+    for cat, recipe_list in recipes.items():
+        cat_parser = viz_cats.add_parser(cat)
+        _add_window_args(cat_parser, granularity=True)
+        cat_parser.add_argument(
+            "recipe",
+            nargs="?",
+            choices=[r[0] for r in recipe_list] + ["all"],
+            default="all",
+        )
+
+    table = subparsers.add_parser("table", help="Print rows from an ingested stream")
+    _add_window_args(table)
+    table.add_argument(
+        "stream",
+        choices=list(STREAMS),
+        help="Stream to tabulate (metrics, request_log, access_log, user)",
+    )
+    table.add_argument(
+        "--columns",
+        type=str,
+        default=None,
+        help="Comma-separated columns to include in the table",
+    )
+    table.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Limit the number of rows shown",
+    )
+    table.add_argument(
+        "--sort",
+        type=str,
+        default=None,
+        help="Sort by column; append ':desc' for descending order",
+    )
+    table.add_argument(
+        "--format",
+        choices=["table", "csv"],
+        default="table",
+        help="Output format (table aligns columns, csv is comma-separated)",
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "visualize":
+        _run_visualize(args, recipes)
+    elif args.command == "table":
+        _run_table(args)
 
 
 def _infer_granularity(
@@ -189,8 +261,6 @@ def _infer_granularity(
 
 def _make_load_data(args, base_load_data, start, end):
     """Return a load_data function that optionally filters metrics by time/cluster."""
-    import polars as pl
-
     if start and end:
         time_filter = lambda c: (
             c.str.head(19).str.to_datetime(time_zone="UTC").is_between(start, end)

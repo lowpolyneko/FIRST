@@ -18,22 +18,22 @@ echo "=== ATPESC 2026 — minerva Event Stats ==="
 echo "Time range: 2026-08-06 17:00 – 2026-08-07 00:00  (UTC)"
 echo "Cluster:    minerva"
 echo "Dataset:    ${DATASET_DIR}"
-echo "Command:    first-stats-query"
+echo "Command:    first-stats-query visualize"
 echo
 
-first-stats-query "${DATASET_DIR}" inference top_users --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
+first-stats-query "${DATASET_DIR}" visualize inference top_users --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
 echo "  → top_users.svg"
 
-first-stats-query "${DATASET_DIR}" inference top_models --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
+first-stats-query "${DATASET_DIR}" visualize inference top_models --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
 echo "  → top_models.svg"
 
-first-stats-query "${DATASET_DIR}" inference top_models_users --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
+first-stats-query "${DATASET_DIR}" visualize inference top_models_users --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
 echo "  → top_models_users.svg"
 
-first-stats-query "${DATASET_DIR}" inference hist_users --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
+first-stats-query "${DATASET_DIR}" visualize inference hist_users --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
 echo "  → hist_users.svg"
 
-first-stats-query "${DATASET_DIR}" inference hist_requests --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
+first-stats-query "${DATASET_DIR}" visualize inference hist_requests --start "2026-08-06 17:00" --end "2026-08-07 00:00" --cluster "minerva"
 echo "  → hist_requests.svg"
 
 echo

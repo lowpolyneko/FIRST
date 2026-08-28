@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12"
 description = ""
 authors = [{ name = "Ethan Wong", email = "ewong@anl.gov" }]
-dependencies = ["holoviews", "hvplot", "polars", "matplotlib"]
+dependencies = ["holoviews", "hvplot", "polars", "matplotlib", "pyarrow"]
 
 [project.scripts]
 first-stats-query = "first_stats_query.__main__:main"
