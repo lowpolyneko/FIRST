@@ -1,8 +1,11 @@
 """Generate tables for the streams ingested by the CLI.
 
 Each stream (metrics, request_log, access_log, user) can be dumped as a
-table, filtered by time range (--period/--start/--end), cluster, and
-limited/sorted. Output is printed as a polars table or CSV.
+raw table or reduced to summations. Rows are filtered by time range
+(--period/--start/--end) and cluster; columns are selectable. With
+``--aggregate``, numeric columns are summed instead of listed, optionally
+grouped by a dimension column (``--group``). Output is printed as a polars
+table or CSV.
 """
 
 import datetime
@@ -39,10 +42,14 @@ def generate_table(
     limit: int | None = None,
     sort: str | None = None,
     fmt: str = "table",
+    aggregate: list[str] | None = None,
+    group: str | None = None,
 ) -> None:
-    """Print rows from ``stream`` as a table or CSV.
+    """Print rows from ``stream``, optionally as column summations.
 
-    Applies time-range, cluster, column, sort, and limit selection.
+    Applies time-range and cluster selection, then either lists rows
+    (column/sort/limit selection) or sums the ``aggregate`` columns,
+    grouped by ``group`` when given.
     """
     lf = load_data(stream)
 
@@ -59,12 +66,21 @@ def generate_table(
     if cluster is not None and cluster_col is not None:
         lf = lf.filter(pl.col(cluster_col).eq(cluster))
 
-    if sort is not None:
-        column, sep, direction = sort.partition(":")
-        lf = lf.sort(column, descending=sep == ":" and direction == "desc")
-
-    if columns is not None:
-        lf = lf.select(*columns)
+    if aggregate is not None:
+        agg_exprs = [pl.col(name).sum().alias(name) for name in aggregate]
+        if group is not None:
+            lf = lf.group_by(group).agg(*agg_exprs)
+        else:
+            lf = lf.select(*agg_exprs)
+        if sort is not None:
+            column, sep, direction = sort.partition(":")
+            lf = lf.sort(column, descending=sep == ":" and direction == "desc")
+    else:
+        if sort is not None:
+            column, sep, direction = sort.partition(":")
+            lf = lf.sort(column, descending=sep == ":" and direction == "desc")
+        if columns is not None:
+            lf = lf.select(*columns)
 
     if limit is not None:
         lf = lf.head(limit)

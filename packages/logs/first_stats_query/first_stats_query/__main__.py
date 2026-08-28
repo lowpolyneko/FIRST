@@ -159,9 +159,10 @@ def _run_visualize(args: argparse.Namespace, recipes: dict[str, list]) -> None:
 
 
 def _run_table(args: argparse.Namespace) -> None:
-    """Print rows from an ingested stream, filtered by the requested ranges."""
+    """Print rows or column summations from an ingested stream."""
     start, end = _resolve_window_start_end(args)
     columns = args.columns.split(",") if args.columns else None
+    aggregate = args.aggregate.split(",") if args.aggregate else None
 
     def base_load(name: str) -> pl.LazyFrame:
         return load_data(args.dataset_dir, name)
@@ -176,6 +177,8 @@ def _run_table(args: argparse.Namespace) -> None:
         limit=args.limit,
         sort=args.sort,
         fmt=args.format,
+        aggregate=aggregate,
+        group=args.group,
     )
 
 
@@ -229,6 +232,18 @@ def main() -> None:
         type=str,
         default=None,
         help="Sort by column; append ':desc' for descending order",
+    )
+    table.add_argument(
+        "--aggregate",
+        type=str,
+        default=None,
+        help="Comma-separated numeric columns to sum instead of listing rows",
+    )
+    table.add_argument(
+        "--group",
+        type=str,
+        default=None,
+        help="Group aggregation rows by this column (requires --aggregate)",
     )
     table.add_argument(
         "--format",
