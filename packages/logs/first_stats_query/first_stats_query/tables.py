@@ -4,8 +4,9 @@ Each stream (metrics, request_log, access_log, user) can be dumped as a
 pretty-printed polars table or reduced to summations. Rows are filtered
 by time range (--period/--start/--end) and cluster; columns are
 selectable. With ``--aggregate``, numeric columns are summed instead of
-listed, optionally grouped by a dimension column (``--group``). The table
-is printed to stdout and the same rows are exported as CSV to disk.
+listed, optionally grouped by a dimension column (``--group``). Rows can
+be filtered by exact column values (``COLUMN=value``). The table is
+printed to stdout and the same rows are exported as CSV to disk.
 """
 
 import datetime
@@ -62,11 +63,14 @@ def _csv_path(
     end: datetime.datetime | None,
     cluster: str | None,
     aggregate: list[str] | None,
+    filters: dict[str, str] | None,
 ) -> str:
     """Derive a filesystem-safe CSV export name from the selection."""
     parts = [stream, window_slug(start, end)]
     if cluster:
         parts.append(cluster)
+    if filters:
+        parts.extend(f"{name}={value}" for name, value in filters.items())
     if aggregate is not None:
         parts.append("agg")
     return "_".join(parts) + ".csv"
@@ -83,12 +87,13 @@ def generate_table(
     sort: str | None = None,
     aggregate: list[str] | None = None,
     group: str | None = None,
+    filters: dict[str, str] | None = None,
 ) -> None:
     """Print rows from ``stream`` as a polars table, optionally as summations.
 
-    Applies time-range and cluster selection, then either lists rows
-    (column/sort/limit selection) or sums the ``aggregate`` columns,
-    grouped by ``group`` when given.
+    Applies time-range, cluster, and exact column-value selection, then
+    either lists rows (column/sort/limit selection) or sums the
+    ``aggregate`` columns, grouped by ``group`` when given.
     """
     lf = load_data(stream)
 
@@ -104,6 +109,10 @@ def generate_table(
     cluster_col = CLUSTER_COL[stream]
     if cluster is not None and cluster_col is not None:
         lf = lf.filter(pl.col(cluster_col).eq(cluster))
+
+    if filters is not None:
+        for name, value in filters.items():
+            lf = lf.filter(pl.col(name).cast(pl.Utf8).eq(value))
 
     if aggregate is not None:
         agg_exprs = [pl.col(name).sum().alias(name) for name in aggregate]
@@ -126,4 +135,4 @@ def generate_table(
 
     df = lf.collect(engine="streaming")
     print(df)
-    _csv_frame(df).write_csv(_csv_path(stream, start, end, cluster, aggregate))
+    _csv_frame(df).write_csv(_csv_path(stream, start, end, cluster, aggregate, filters))

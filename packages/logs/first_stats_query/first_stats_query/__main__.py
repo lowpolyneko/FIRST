@@ -163,6 +163,7 @@ def _run_table(args: argparse.Namespace) -> None:
     start, end = _resolve_window_start_end(args)
     columns = args.columns.split(",") if args.columns else None
     aggregate = args.aggregate.split(",") if args.aggregate else None
+    filters = _parse_filters(args)
 
     def base_load(name: str) -> pl.LazyFrame:
         return load_data(args.dataset_dir, name)
@@ -178,7 +179,19 @@ def _run_table(args: argparse.Namespace) -> None:
         sort=args.sort,
         aggregate=aggregate,
         group=args.group,
+        filters=filters,
     )
+
+
+def _parse_filters(args: argparse.Namespace) -> dict[str, str] | None:
+    """Parse repeated --filter COLUMN=value specs into a column-value map."""
+    if not args.filter:
+        return None
+    filters: dict[str, str] = {}
+    for spec in args.filter:
+        name, _, value = spec.partition("=")
+        filters[name] = value
+    return filters
 
 
 def main() -> None:
@@ -231,6 +244,13 @@ def main() -> None:
         type=str,
         default=None,
         help="Sort by column; append ':desc' for descending order",
+    )
+    table.add_argument(
+        "--filter",
+        type=str,
+        action="append",
+        default=None,
+        help="Filter rows by exact column value (COLUMN=value); repeatable",
     )
     table.add_argument(
         "--aggregate",
