@@ -176,7 +176,6 @@ def _run_table(args: argparse.Namespace) -> None:
         columns=columns,
         limit=args.limit,
         sort=args.sort,
-        fmt=args.format,
         aggregate=aggregate,
         group=args.group,
     )
@@ -244,12 +243,6 @@ def main() -> None:
         type=str,
         default=None,
         help="Group aggregation rows by this column (requires --aggregate)",
-    )
-    table.add_argument(
-        "--format",
-        choices=["table", "csv"],
-        default="table",
-        help="Output format (table aligns columns, csv is comma-separated)",
     )
 
     args = parser.parse_args()

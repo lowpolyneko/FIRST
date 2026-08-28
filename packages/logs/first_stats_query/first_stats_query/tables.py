@@ -1,17 +1,20 @@
 """Generate tables for the streams ingested by the CLI.
 
 Each stream (metrics, request_log, access_log, user) can be dumped as a
-raw table or reduced to summations. Rows are filtered by time range
-(--period/--start/--end) and cluster; columns are selectable. With
-``--aggregate``, numeric columns are summed instead of listed, optionally
-grouped by a dimension column (``--group``). Output is printed as a polars
-table or CSV.
+pretty-printed polars table or reduced to summations. Rows are filtered
+by time range (--period/--start/--end) and cluster; columns are
+selectable. With ``--aggregate``, numeric columns are summed instead of
+listed, optionally grouped by a dimension column (``--group``). The table
+is printed to stdout and the same rows are exported as CSV to disk.
 """
 
 import datetime
+import json
 from typing import Callable
 
 import polars as pl
+
+from .visualizations.helpers import window_slug
 
 STREAMS = ("metrics", "request_log", "access_log", "user")
 
@@ -32,6 +35,43 @@ CLUSTER_COL: dict[str, str | None] = {
 }
 
 
+def _jsonify(value: object) -> str:
+    """Serialize a nested value as a JSON string for CSV export."""
+    if isinstance(value, pl.Series):
+        value = value.to_list()
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _csv_frame(df: pl.DataFrame) -> pl.DataFrame:
+    """Return a CSV-safe copy, serializing nested columns as JSON strings."""
+    nested = [
+        name
+        for name, dtype in df.schema.items()
+        if isinstance(dtype, (pl.List, pl.Struct))
+    ]
+    if not nested:
+        return df
+    return df.with_columns(
+        pl.col(name).map_elements(_jsonify, return_dtype=pl.Utf8) for name in nested
+    )
+
+
+def _csv_path(
+    stream: str,
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
+    cluster: str | None,
+    aggregate: list[str] | None,
+) -> str:
+    """Derive a filesystem-safe CSV export name from the selection."""
+    parts = [stream, window_slug(start, end)]
+    if cluster:
+        parts.append(cluster)
+    if aggregate is not None:
+        parts.append("agg")
+    return "_".join(parts) + ".csv"
+
+
 def generate_table(
     load_data: Callable[[str], pl.LazyFrame],
     stream: str,
@@ -41,11 +81,10 @@ def generate_table(
     columns: list[str] | None = None,
     limit: int | None = None,
     sort: str | None = None,
-    fmt: str = "table",
     aggregate: list[str] | None = None,
     group: str | None = None,
 ) -> None:
-    """Print rows from ``stream``, optionally as column summations.
+    """Print rows from ``stream`` as a polars table, optionally as summations.
 
     Applies time-range and cluster selection, then either lists rows
     (column/sort/limit selection) or sums the ``aggregate`` columns,
@@ -86,7 +125,5 @@ def generate_table(
         lf = lf.head(limit)
 
     df = lf.collect(engine="streaming")
-    if fmt == "csv":
-        print(df.write_csv())
-    else:
-        print(df)
+    print(df)
+    _csv_frame(df).write_csv(_csv_path(stream, start, end, cluster, aggregate))
