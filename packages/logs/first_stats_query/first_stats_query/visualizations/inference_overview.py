@@ -8,7 +8,13 @@ from matplotlib.dates import DateFormatter
 from matplotlib.ticker import StrMethodFormatter
 
 from . import recipe
-from .helpers import join_request_log, join_user, window_label, window_slug
+from .helpers import (
+    filter_period,
+    join_request_log,
+    join_user,
+    window_label,
+    window_slug,
+)
 
 
 @recipe("inference")
@@ -16,6 +22,8 @@ def top_users(load_data, start, end, _granularity="auto", _cluster=None):  # noq
     """Top 20 users by total tokens for the period."""
     result = (
         load_data("metrics")
+        .pipe(join_request_log, load_data)
+        .pipe(join_user, load_data)
         .select("user.name", "total_tokens")
         .group_by("user.name")
         .agg(pl.col("total_tokens").sum())
@@ -71,7 +79,7 @@ def top_models_requests(load_data, start, end, _granularity="auto", _cluster=Non
     result = (
         load_data("metrics")
         .group_by("model")
-        .agg(pl.col("model").count())
+        .agg(pl.col("model").count().alias("model_count"))
         .sort("model", descending=True)
         .limit(20)
         .collect(engine="streaming")
@@ -126,10 +134,17 @@ def hist_users(load_data, start, end, _granularity="auto", _cluster=None):  # no
     """User distribution histogram for the period."""
     df = (
         load_data("access_log")
-        .pipe(join_user, load_data)
+        .join(
+            load_data("user").unique(subset="id"),
+            left_on="user.id",
+            right_on="id",
+            suffix="_u",
+        )
         .select("user.name", "timestamp_request")
-        .collect(engine="streaming")
     )
+    if start is not None and end is not None:
+        df = df.pipe(filter_period, "timestamp_request", start, end)
+    df = df.collect(engine="streaming")
     kwargs = {
         "y": "timestamp_request",
         "title": f"User Distribution ({window_label(start, end)})",
@@ -149,11 +164,10 @@ def hist_users(load_data, start, end, _granularity="auto", _cluster=None):  # no
 @recipe("inference")
 def hist_requests(load_data, start, end, _granularity="auto", _cluster=None):  # noqa: ARG001
     """Request distribution histogram for the period."""
-    df = (
-        load_data("metrics")
-        .select("timestamp_compute_request")
-        .collect(engine="streaming")
-    )
+    df = load_data("metrics").select("timestamp_compute_request")
+    if start is not None and end is not None:
+        df = df.pipe(filter_period, "timestamp_compute_request", start, end)
+    df = df.collect(engine="streaming")
     kwargs = {
         "y": "timestamp_compute_request",
         "title": f"Request Distribution ({window_label(start, end)})",

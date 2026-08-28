@@ -6,8 +6,10 @@ axis labels; the period (6m/1m/all) controls the data filter.
 """
 
 import datetime
+from typing import Callable
 
 import holoviews as hv
+import hvplot.polars  # type: ignore  # noqa: F401 (registers DataFrame.hvplot accessor)
 import polars as pl
 
 # ── Data helpers ────────────────────────────────────────────────────────
@@ -22,7 +24,9 @@ def filter_period(
     ).filter(pl.col(time_col).is_between(start, end))
 
 
-def join_request_log(load_data, df: pl.LazyFrame) -> pl.LazyFrame:
+def join_request_log(
+    df: pl.LazyFrame, load_data: Callable[[str], pl.LazyFrame]
+) -> pl.LazyFrame:
     """Join metrics with request_log on request_id."""
     return df.join(
         load_data("request_log"),
@@ -32,7 +36,9 @@ def join_request_log(load_data, df: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def join_user(load_data, df: pl.LazyFrame) -> pl.LazyFrame:
+def join_user(
+    df: pl.LazyFrame, load_data: Callable[[str], pl.LazyFrame]
+) -> pl.LazyFrame:
     """Join with user table (deduplicated by id)."""
     return df.join(
         load_data("user").unique(subset="id"),
@@ -76,58 +82,61 @@ def plot_bar(
     df, start, end, granularity, y_col, by_col, title, xlabel, ylabel, save_path
 ):
     """Grouped bar chart, adapted to granularity."""
-    plot, ax_setup = _plot_info(granularity)
-    agg_fn = pl.col(y_col).sum()
+    plot = _plot_info(granularity)
+    title_text = f"{title} ({window_label(start, end)})"
 
     if granularity == "auto":
-        result = df.group_by(by_col).agg(agg_fn).sort(y_col, descending=True)
-    else:
-        result = (
-            df.group_by(by_col, plot["group_col"])
-            .agg(agg_fn)
-            .sort([plot["group_col"], by_col])
+        plot_obj = df.hvplot.bar(
+            x=by_col,
+            y=y_col,
+            title=title_text,
+            xlabel=plot["xlabel"] or xlabel,
+            ylabel=ylabel,
+            aspect="square",
         )
-
-    plot_obj = result.hvplot.bar(
-        x=plot["x_col"],
-        y=y_col,
-        by=by_col,
-        title=f"{title} ({window_label(start, end)})",
-        xlabel=plot["xlabel"] or xlabel,
-        ylabel=ylabel,
-        aspect="square",
-        stacked=False,
-        width=800,
-    )
+    else:
+        plot_obj = df.hvplot.bar(
+            x=plot["x_col"],
+            y=y_col,
+            by=by_col,
+            title=title_text,
+            xlabel=plot["xlabel"] or xlabel,
+            ylabel=ylabel,
+            aspect="square",
+            stacked=False,
+            width=800,
+        )
     _save_plot(plot_obj, save_path, plot["xticks"], plot["xtick_labels"])
 
 
 def plot_stacked_pct(
-    df, start, end, granularity, by_col, y_col, title, xlabel, ylabel, save_path
+    df, start, end, granularity, by_col, title, xlabel, ylabel, save_path
 ):
     """Stacked bar chart with percentage, adapted to granularity."""
-    plot, ax_setup = _plot_info(granularity)
-    group_cols = [by_col, plot["group_col"]] if granularity != "auto" else [by_col]
+    plot = _plot_info(granularity)
+    title_text = f"{title} ({window_label(start, end)})"
 
-    result = (
-        df.group_by(*group_cols)
-        .agg(pl.col(y_col).count().alias("count"))
-        .sort(group_cols)
-    )
-    result = result.with_columns(
-        (pl.col("count") / pl.col("count").sum().over(group_cols)).alias("pct"),
-    )
-
-    plot_obj = result.hvplot.bar(
-        x=plot["x_col"],
-        y="pct",
-        by=by_col,
-        title=f"{title} ({window_label(start, end)})",
-        xlabel=plot["xlabel"] or xlabel,
-        ylabel=ylabel,
-        aspect="square",
-        stacked=True,
-    )
+    if granularity == "auto":
+        plot_obj = df.hvplot.bar(
+            x=by_col,
+            y="pct_request",
+            title=title_text,
+            xlabel=plot["xlabel"] or xlabel,
+            ylabel=ylabel,
+            aspect="square",
+            stacked=True,
+        )
+    else:
+        plot_obj = df.hvplot.bar(
+            x=plot["x_col"],
+            y="pct_request",
+            by=by_col,
+            title=title_text,
+            xlabel=plot["xlabel"] or xlabel,
+            ylabel=ylabel,
+            aspect="square",
+            stacked=True,
+        )
     _save_plot(plot_obj, save_path, plot["xticks"], plot["xtick_labels"])
 
 
