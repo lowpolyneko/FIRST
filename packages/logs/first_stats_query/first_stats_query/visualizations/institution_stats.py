@@ -1,32 +1,46 @@
 """Requests by institution over time."""
 
+import datetime
+
 import polars as pl
 
 from . import recipe
 from .helpers import (
-    group_day,
-    group_month_year,
+    LoadData,
+    add_percent,
+    filter_period,
+    group_time,
     join_request_log,
     join_user,
     plot_stacked_pct,
     window_slug,
 )
 
+TIME_COL = "timestamp_compute_request"
+
 
 @recipe("institution")
-def institution(load_data, start, end, granularity="monthly", _cluster=None):
+def institution(
+    load_data: LoadData,
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
+    granularity: str = "monthly",
+    _cluster: str | None = None,
+) -> None:
     """Requests by institution, adapted to granularity."""
-    df = (
-        load_data("metrics")
-        .pipe(join_request_log, load_data)
-        .pipe(join_user, load_data)
-        .select("timestamp_compute_request", "username")
+    df, buckets = group_time(
+        filter_period(
+            load_data("metrics")
+            .pipe(join_request_log, load_data)
+            .pipe(join_user, load_data)
+            .select(TIME_COL, "username"),
+            TIME_COL,
+            start,
+            end,
+        ),
+        TIME_COL,
+        granularity,
     )
-    if start is not None and end is not None:
-        from .helpers import filter_period
-
-        df = filter_period(df, "timestamp_compute_request", start, end)
-
     df = df.with_columns(
         pl.col("username")
         .str.split("@")
@@ -34,77 +48,24 @@ def institution(load_data, start, end, granularity="monthly", _cluster=None):
         .alias("institution"),
     ).filter(pl.col("institution").is_not_null())
 
-    match granularity:
-        case "monthly":
-            df = df.pipe(group_month_year, "timestamp_compute_request")
-            aggregated = (
-                df.group_by("institution", "year", "month")
-                .agg(pl.col("institution").count().alias("request_count"))
-                .sort("year", "month", "institution")
-            )
-            aggregated = aggregated.with_columns(
-                (
-                    pl.col("request_count")
-                    / pl.col("request_count").sum().over(["year", "month"])
-                ).alias("pct_request"),
-            )
-            aggregated = aggregated.collect(engine="streaming")
-            plot_stacked_pct(
-                aggregated,
-                start,
-                end,
-                "monthly",
-                "institution",
-                "Requests By Institution",
-                "Month",
-                "% of Requests",
-                f"institution_monthly_{window_slug(start, end)}.svg",
-            )
-        case "daily":
-            df = df.pipe(group_day, "timestamp_compute_request")
-            aggregated = (
-                df.group_by("institution", "day")
-                .agg(pl.col("institution").count().alias("request_count"))
-                .sort("day", "institution")
-            )
-            aggregated = aggregated.with_columns(
-                (
-                    pl.col("request_count")
-                    / pl.col("request_count").sum().over(["day"])
-                ).alias("pct_request"),
-            )
-            aggregated = aggregated.collect(engine="streaming")
-            plot_stacked_pct(
-                aggregated,
-                start,
-                end,
-                "daily",
-                "institution",
-                "Requests By Institution",
-                "Day of Period",
-                "% of Requests",
-                f"institution_daily_{window_slug(start, end)}.svg",
-            )
-        case _:
-            aggregated = (
-                df.group_by("institution")
-                .agg(pl.col("institution").count().alias("request_count"))
-                .sort("request_count", descending=True)
-            )
-            aggregated = aggregated.with_columns(
-                (
-                    pl.col("request_count") / pl.col("request_count").sum().over([])
-                ).alias("pct_request"),
-            )
-            aggregated = aggregated.collect(engine="streaming")
-            plot_stacked_pct(
-                aggregated,
-                start,
-                end,
-                "auto",
-                "institution",
-                "Requests By Institution",
-                "Institution",
-                "% of Requests",
-                f"institution_auto_{window_slug(start, end)}.svg",
-            )
+    keys = ["institution", *buckets]
+    aggregated = df.group_by(*keys).agg(
+        pl.col("institution").count().alias("request_count")
+    )
+    aggregated = add_percent(aggregated, buckets, "request_count")
+    aggregated = (
+        aggregated.sort(*buckets, "institution")
+        if buckets
+        else aggregated.sort("request_count", descending=True)
+    )
+    plot_stacked_pct(
+        aggregated.collect(engine="streaming"),
+        start,
+        end,
+        granularity,
+        "institution",
+        "Requests By Institution",
+        "Institution",
+        "% of Requests",
+        f"institution_{granularity}_{window_slug(start, end)}.svg",
+    )

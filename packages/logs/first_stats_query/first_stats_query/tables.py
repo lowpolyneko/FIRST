@@ -98,13 +98,12 @@ def generate_table(
     lf = load_data(stream)
 
     timestamp_col = TIMESTAMP_COL[stream]
-    if start is not None and end is not None and timestamp_col is not None:
-        lf = lf.filter(
-            pl.col(timestamp_col)
-            .str.head(19)
-            .str.to_datetime(time_zone="UTC")
-            .is_between(start, end)
-        )
+    if timestamp_col is not None:
+        timestamp = pl.col(timestamp_col).str.head(19).str.to_datetime(time_zone="UTC")
+        if start is not None:
+            lf = lf.filter(timestamp >= start)
+        if end is not None:
+            lf = lf.filter(timestamp <= end)
 
     cluster_col = CLUSTER_COL[stream]
     if cluster is not None and cluster_col is not None:

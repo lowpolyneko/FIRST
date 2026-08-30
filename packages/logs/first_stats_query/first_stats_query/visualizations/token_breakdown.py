@@ -1,154 +1,69 @@
 """Token usage breakdown by cluster over time."""
 
+import datetime
+
 import polars as pl
 
 from . import recipe
-from .helpers import group_day, group_month_year, window_label, window_slug
+from .helpers import (
+    LoadData,
+    filter_period,
+    group_time,
+    plot_info,
+    plot_stacked,
+    window_label,
+    window_slug,
+)
+
+TIME_COL = "timestamp_compute_request"
+TOKEN_COLS = ["prompt_tokens", "completion_tokens"]
 
 
 @recipe("token-breakdown")
-def token_breakdown(load_data, start, end, granularity="monthly", _cluster=None):
+def token_breakdown(
+    load_data: LoadData,
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
+    granularity: str = "monthly",
+    _cluster: str | None = None,
+) -> None:
     """Prompt vs completion tokens by cluster, adapted to granularity."""
-    df = load_data("metrics").select(
-        "cluster", "prompt_tokens", "completion_tokens", "timestamp_compute_request"
+    df, buckets = group_time(
+        filter_period(
+            load_data("metrics").select("cluster", *TOKEN_COLS, TIME_COL),
+            TIME_COL,
+            start,
+            end,
+        ),
+        TIME_COL,
+        granularity,
     )
-    if start is not None and end is not None:
-        from .helpers import filter_period
-
-        df = filter_period(df, "timestamp_compute_request", start, end)
-
     df = df.with_columns(
-        pl.col("prompt_tokens").fill_null(0),
-        pl.col("completion_tokens").fill_null(0),
+        *(pl.col(name).fill_null(0) for name in TOKEN_COLS),
     )
-
-    match granularity:
-        case "monthly":
-            df = df.pipe(group_month_year, "timestamp_compute_request")
-            aggregated = (
-                df.group_by("cluster", "year", "month")
-                .agg(
-                    pl.col("prompt_tokens").sum().alias("prompt_tokens"),
-                    pl.col("completion_tokens").sum().alias("completion_tokens"),
-                )
-                .sort("year", "month", "cluster")
-                .collect(engine="streaming")
-            )
-            _plot_token_monthly(
-                aggregated, start, end, f"monthly_{window_slug(start, end)}"
-            )
-        case "daily":
-            df = df.pipe(group_day, "timestamp_compute_request")
-            aggregated = (
-                df.group_by("cluster", "day")
-                .agg(
-                    pl.col("prompt_tokens").sum().alias("prompt_tokens"),
-                    pl.col("completion_tokens").sum().alias("completion_tokens"),
-                )
-                .sort("day", "cluster")
-                .collect(engine="streaming")
-            )
-            _plot_token_daily(
-                aggregated, start, end, f"daily_{window_slug(start, end)}"
-            )
-        case _:
-            aggregated = (
-                df.group_by("cluster")
-                .agg(
-                    pl.col("prompt_tokens").sum().alias("prompt_tokens"),
-                    pl.col("completion_tokens").sum().alias("completion_tokens"),
-                )
-                .sort("cluster")
-                .collect(engine="streaming")
-            )
-            _plot_token_auto(aggregated, start, end, f"auto_{window_slug(start, end)}")
-
-
-def _plot_token_monthly(df: pl.DataFrame, start, end, suffix: str):
-    """Unpivot and plot per-cluster stacked token bar charts (monthly)."""
-    import holoviews as hv
-
-    melted = df.unpivot(
-        index=["cluster", "year", "month"],
-        on=["prompt_tokens", "completion_tokens"],
-        variable_name="token_type",
-        value_name="tokens",
-    )
-    for cluster in melted.select("cluster").unique().to_series().to_list():
-        plot_df = melted.filter(pl.col("cluster") == cluster)
-        plot = plot_df.hvplot.bar(
-            x="month",
-            y="tokens",
-            by="token_type",
-            stacked=True,
-            title=f"Token Usage Breakdown By Type - {cluster} ({window_label(start, end)})",
-            xlabel="Month",
-            ylabel="# of Tokens",
-            aspect="square",
-            width=800,
+    keys = ["cluster", *buckets]
+    melted = (
+        df.group_by(*keys)
+        .agg(*(pl.col(name).sum().alias(name) for name in TOKEN_COLS))
+        .sort(*keys)
+        .collect(engine="streaming")
+        .unpivot(
+            index=keys,
+            on=TOKEN_COLS,
+            variable_name="token_type",
+            value_name="tokens",
         )
-        renderer = hv.renderer("matplotlib")
-        plot_state = renderer.get_plot(plot)
-        fig = plot_state.state
-        fig.tight_layout()
-        fig.savefig(f"token_breakdown_{cluster}_monthly_{suffix}.svg")
-
-
-def _plot_token_daily(df: pl.DataFrame, start, end, suffix: str):
-    """Unpivot and plot per-cluster stacked token bar charts (daily)."""
-    import holoviews as hv
-
-    melted = df.unpivot(
-        index=["cluster", "day"],
-        on=["prompt_tokens", "completion_tokens"],
-        variable_name="token_type",
-        value_name="tokens",
     )
-    for cluster in melted.select("cluster").unique().to_series().to_list():
-        plot_df = melted.filter(pl.col("cluster") == cluster)
-        plot = plot_df.hvplot.bar(
-            x="day",
-            y="tokens",
-            by="token_type",
-            stacked=True,
+
+    axis = plot_info(granularity)
+    for cluster in melted.get_column("cluster").unique().to_list():
+        plot_stacked(
+            melted.filter(pl.col("cluster") == cluster),
+            x_col=buckets[0] if buckets else "cluster",
+            y_col="tokens",
+            by_col="token_type",
             title=f"Token Usage Breakdown By Type - {cluster} ({window_label(start, end)})",
-            xlabel="Day of Period",
+            xlabel=axis["xlabel"] or "Cluster",
             ylabel="# of Tokens",
-            aspect="square",
-            width=800,
+            save_path=f"token_breakdown_{cluster}_{granularity}_{window_slug(start, end)}.svg",
         )
-        renderer = hv.renderer("matplotlib")
-        plot_state = renderer.get_plot(plot)
-        fig = plot_state.state
-        fig.tight_layout()
-        fig.savefig(f"token_breakdown_{cluster}_daily_{suffix}.svg")
-
-
-def _plot_token_auto(df: pl.DataFrame, start, end, suffix: str):
-    """Unpivot and plot per-cluster stacked token bar charts (auto)."""
-    import holoviews as hv
-
-    melted = df.unpivot(
-        index=["cluster"],
-        on=["prompt_tokens", "completion_tokens"],
-        variable_name="token_type",
-        value_name="tokens",
-    )
-    for cluster in melted.select("cluster").unique().to_series().to_list():
-        plot_df = melted.filter(pl.col("cluster") == cluster)
-        plot = plot_df.hvplot.bar(
-            x="cluster",
-            y="tokens",
-            by="token_type",
-            stacked=True,
-            title=f"Token Usage Breakdown By Type - {cluster} ({window_label(start, end)})",
-            xlabel="Cluster",
-            ylabel="# of Tokens",
-            aspect="square",
-            width=800,
-        )
-        renderer = hv.renderer("matplotlib")
-        plot_state = renderer.get_plot(plot)
-        fig = plot_state.state
-        fig.tight_layout()
-        fig.savefig(f"token_breakdown_{cluster}_auto_{suffix}.svg")

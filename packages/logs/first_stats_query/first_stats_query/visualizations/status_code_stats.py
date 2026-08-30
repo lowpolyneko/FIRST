@@ -1,95 +1,60 @@
 """Requests by status code over time."""
 
+import datetime
+
 import polars as pl
 
 from . import recipe
-from .helpers import group_day, group_month_year, plot_stacked_pct, window_slug
+from .helpers import (
+    LoadData,
+    add_percent,
+    filter_period,
+    group_time,
+    plot_stacked_pct,
+    window_slug,
+)
+
+TIME_COL = "timestamp_compute_request"
 
 
 @recipe("status")
-def status(load_data, start, end, granularity="monthly", _cluster=None):
+def status(
+    load_data: LoadData,
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
+    granularity: str = "monthly",
+    _cluster: str | None = None,
+) -> None:
     """Requests by status code, adapted to granularity."""
-    df = load_data("metrics").select("status_code", "timestamp_compute_request")
-    if start is not None and end is not None:
-        from .helpers import filter_period
-
-        df = filter_period(df, "timestamp_compute_request", start, end)
-
+    df, buckets = group_time(
+        filter_period(
+            load_data("metrics").select("status_code", TIME_COL), TIME_COL, start, end
+        ),
+        TIME_COL,
+        granularity,
+    )
     df = df.with_columns(
-        pl.col("status_code").cast(pl.Utf8).fill_null("null").alias("status_code"),
-    ).filter(pl.col("status_code").is_not_null())
+        pl.col("status_code").cast(pl.String).fill_null("null").alias("status_code"),
+    )
 
-    match granularity:
-        case "monthly":
-            df = df.pipe(group_month_year, "timestamp_compute_request")
-            aggregated = (
-                df.group_by("status_code", "year", "month")
-                .agg(pl.col("status_code").count().alias("request_count"))
-                .sort("year", "month", "status_code")
-            )
-            aggregated = aggregated.with_columns(
-                (
-                    pl.col("request_count")
-                    / pl.col("request_count").sum().over(["year", "month"])
-                ).alias("pct_request"),
-            )
-            aggregated = aggregated.collect(engine="streaming")
-            plot_stacked_pct(
-                aggregated,
-                start,
-                end,
-                "monthly",
-                "status_code",
-                "Requests By Status",
-                "Month",
-                "% of Requests",
-                f"status_monthly_{window_slug(start, end)}.svg",
-            )
-        case "daily":
-            df = df.pipe(group_day, "timestamp_compute_request")
-            aggregated = (
-                df.group_by("status_code", "day")
-                .agg(pl.col("status_code").count().alias("request_count"))
-                .sort("day", "status_code")
-            )
-            aggregated = aggregated.with_columns(
-                (
-                    pl.col("request_count")
-                    / pl.col("request_count").sum().over(["day"])
-                ).alias("pct_request"),
-            )
-            aggregated = aggregated.collect(engine="streaming")
-            plot_stacked_pct(
-                aggregated,
-                start,
-                end,
-                "daily",
-                "status_code",
-                "Requests By Status",
-                "Day of Period",
-                "% of Requests",
-                f"status_daily_{window_slug(start, end)}.svg",
-            )
-        case _:
-            aggregated = (
-                df.group_by("status_code")
-                .agg(pl.col("status_code").count().alias("request_count"))
-                .sort("request_count", descending=True)
-            )
-            aggregated = aggregated.with_columns(
-                (
-                    pl.col("request_count") / pl.col("request_count").sum().over([])
-                ).alias("pct_request"),
-            )
-            aggregated = aggregated.collect(engine="streaming")
-            plot_stacked_pct(
-                aggregated,
-                start,
-                end,
-                "auto",
-                "status_code",
-                "Requests By Status",
-                "Status Code",
-                "% of Requests",
-                f"status_auto_{window_slug(start, end)}.svg",
-            )
+    keys = ["status_code", *buckets]
+    aggregated = df.group_by(*keys).agg(
+        pl.col("status_code").count().alias("request_count")
+    )
+    aggregated = add_percent(aggregated, buckets, "request_count")
+    aggregated = (
+        aggregated.sort(*buckets, "status_code")
+        if buckets
+        else aggregated.sort("request_count", descending=True)
+    )
+    plot_stacked_pct(
+        aggregated.collect(engine="streaming"),
+        start,
+        end,
+        granularity,
+        "status_code",
+        "Requests By Status",
+        "Status Code",
+        "% of Requests",
+        f"status_{granularity}_{window_slug(start, end)}.svg",
+    )

@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+from collections.abc import Callable
 
 import polars as pl
 
@@ -12,8 +13,12 @@ import first_stats_query.visualizations.institution_stats  # noqa: F401
 import first_stats_query.visualizations.status_code_stats  # noqa: F401
 import first_stats_query.visualizations.token_breakdown  # noqa: F401
 
-from .tables import STREAMS, generate_table
+from .tables import CLUSTER_COL, STREAMS, TIMESTAMP_COL, generate_table
 from .visualizations import get_recipes
+from .visualizations.helpers import Recipe, filter_period
+
+# Timestamp column of the metrics stream, the source of every time axis.
+METRICS_TIME_COL = "timestamp_compute_request"
 
 
 def load_data(dataset_dir: str, name: str) -> pl.LazyFrame:
@@ -38,7 +43,11 @@ def load_data(dataset_dir: str, name: str) -> pl.LazyFrame:
                 extra_columns="ignore",
             )
         case "user":
-            return pl.scan_parquet(f"{dataset_dir}/*.user.parquet")
+            return pl.scan_parquet(
+                f"{dataset_dir}/*.user.parquet",
+                missing_columns="insert",
+                extra_columns="ignore",
+            )
         case _:
             raise ValueError(f"unknown data source: {name}")
 
@@ -93,6 +102,10 @@ def _resolve_window_start_end(
     """Resolve the time window from a subcommand's --period/--start/--end options."""
     if args.period:
         return _resolve_window(args.period, args.start, args.end)
+    if bool(args.start) != bool(args.end):
+        raise SystemExit(
+            "error: --start and --end must be given together (or pick --period)"
+        )
     if args.start and args.end:
         return (_parse_datetime(args.start), _parse_datetime(args.end))
     return (None, None)
@@ -140,19 +153,20 @@ def _add_window_args(
         )
 
 
-def _run_visualize(args: argparse.Namespace, recipes: dict[str, list]) -> None:
+def _run_visualize(
+    args: argparse.Namespace, recipes: dict[str, list[tuple[str, Recipe]]]
+) -> None:
     """Run graph recipes under the given category/recipe choice."""
     if args.help_categories:
         _print_recipes(recipes)
         return
 
     start, end = _resolve_window_start_end(args)
-    recipe_list = recipes[args.category]
+    granularity = args.granularity or _infer_granularity(start, end)
+    load_data_func = _make_load_data(args.dataset_dir, start, end, args.cluster)
 
-    for name, func in recipe_list:
+    for name, func in recipes[args.category]:
         if args.recipe == "all" or args.recipe == name:
-            load_data_func = _make_load_data(args, load_data, start, end)
-            granularity = args.granularity or _infer_granularity(start, end)
             func(load_data_func, start, end, granularity, args.cluster)
         if args.recipe == name:
             break
@@ -161,6 +175,12 @@ def _run_visualize(args: argparse.Namespace, recipes: dict[str, list]) -> None:
 def _run_table(args: argparse.Namespace) -> None:
     """Print rows or column summations from an ingested stream."""
     start, end = _resolve_window_start_end(args)
+    if args.cluster and CLUSTER_COL[args.stream] is None:
+        raise SystemExit(f"error: the {args.stream!r} stream has no cluster column")
+    if (start or end) and TIMESTAMP_COL[args.stream] is None:
+        raise SystemExit(
+            f"error: the {args.stream!r} stream has no timestamps to filter by"
+        )
     columns = args.columns.split(",") if args.columns else None
     aggregate = args.aggregate.split(",") if args.aggregate else None
     filters = _parse_filters(args)
@@ -216,7 +236,7 @@ def main() -> None:
         cat_parser.add_argument(
             "recipe",
             nargs="?",
-            choices=[r[0] for r in recipe_list] + ["all"],
+            choices=[name for name, _ in recipe_list] + ["all"],
             default="all",
         )
 
@@ -270,6 +290,8 @@ def main() -> None:
     if args.command == "visualize":
         _run_visualize(args, recipes)
     elif args.command == "table":
+        if args.group and not args.aggregate:
+            parser.error("--group requires --aggregate")
         _run_table(args)
 
 
@@ -287,51 +309,27 @@ def _infer_granularity(
     return "yearly"
 
 
-def _make_load_data(args, base_load_data, start, end):
-    """Return a load_data function that optionally filters metrics by time/cluster."""
-    if start and end:
-        time_filter = lambda c: (
-            c.str.head(19).str.to_datetime(time_zone="UTC").is_between(start, end)
-        )
+def _make_load_data(
+    dataset_dir: str,
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
+    cluster: str | None,
+) -> Callable[[str], pl.LazyFrame]:
+    """Return a load_data function that filters metrics by time/cluster."""
 
-        if args.cluster:
-            cluster_filter = pl.col("cluster").eq(args.cluster)
-
-            def load_data_func(name):
-                lf = base_load_data(args.dataset_dir, name)
-                if name == "metrics":
-                    return lf.filter(
-                        time_filter(pl.col("timestamp_compute_request"))
-                    ).filter(cluster_filter)
-                return lf
-        else:
-
-            def load_data_func(name):
-                lf = base_load_data(args.dataset_dir, name)
-                if name == "metrics":
-                    return lf.filter(time_filter(pl.col("timestamp_compute_request")))
-                return lf
-
-        return load_data_func
-    elif args.cluster:
-        cluster_filter = pl.col("cluster").eq(args.cluster)
-
-        def load_data_func(name):
-            lf = base_load_data(args.dataset_dir, name)
-            if name == "metrics":
-                return lf.filter(cluster_filter)
+    def load_data_func(name: str) -> pl.LazyFrame:
+        lf = load_data(dataset_dir, name)
+        if name != "metrics":
             return lf
+        lf = filter_period(lf, METRICS_TIME_COL, start, end)
+        if cluster is not None:
+            lf = lf.filter(pl.col("cluster") == cluster)
+        return lf
 
-        return load_data_func
-    else:
-
-        def load_data_func(name):
-            return base_load_data(args.dataset_dir, name)
-
-        return load_data_func
+    return load_data_func
 
 
-def _print_recipes(recipes):
+def _print_recipes(recipes: dict[str, list[tuple[str, Recipe]]]) -> None:
     print("Available categories and recipes:")
     for category_name, recipe_list in recipes.items():
         print(f"\n  {category_name}:")
