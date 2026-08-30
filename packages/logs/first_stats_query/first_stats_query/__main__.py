@@ -3,6 +3,7 @@
 import argparse
 import datetime
 from collections.abc import Callable
+from typing import Any
 
 import polars as pl
 
@@ -153,14 +154,24 @@ def _add_window_args(
         )
 
 
+class _ListRecipes(argparse.Action):
+    """Print every registered category and recipe, then stop."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        _namespace: argparse.Namespace,
+        _values: Any,
+        _option_string: str | None = None,
+    ) -> None:
+        _print_recipes(get_recipes())
+        parser.exit()
+
+
 def _run_visualize(
     args: argparse.Namespace, recipes: dict[str, list[tuple[str, Recipe]]]
 ) -> None:
     """Run graph recipes under the given category/recipe choice."""
-    if args.help_categories:
-        _print_recipes(recipes)
-        return
-
     start, end = _resolve_window_start_end(args)
     granularity = args.granularity or _infer_granularity(start, end)
     load_data_func = _make_load_data(args.dataset_dir, start, end, args.cluster)
@@ -224,12 +235,13 @@ def main() -> None:
     )
     visualize.add_argument(
         "--help-categories",
-        action="store_true",
+        action=_ListRecipes,
+        nargs=0,
         help="List available categories and recipes",
     )
 
     recipes = get_recipes()
-    viz_cats = visualize.add_subparsers(dest="category")
+    viz_cats = visualize.add_subparsers(dest="category", required=True)
     for cat, recipe_list in recipes.items():
         cat_parser = viz_cats.add_parser(cat)
         _add_window_args(cat_parser, granularity=True)

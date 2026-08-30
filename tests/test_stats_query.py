@@ -260,6 +260,33 @@ def test_empty_window_skips_plots(
     assert "no rows in the selected window" in capsys.readouterr().out
 
 
+def test_visualize_needs_a_category(
+    dataset: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """argparse requires a category, so no recipe runs without one."""
+    with pytest.raises(SystemExit) as exit_info:
+        _run(monkeypatch, dataset, "visualize")
+    assert exit_info.value.code == 2
+    assert "required: category" in capsys.readouterr().err
+
+
+def test_help_categories_lists_recipes(
+    dataset: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--help-categories lists the recipes and stops, like --help does."""
+    with pytest.raises(SystemExit) as exit_info:
+        _run(monkeypatch, dataset, "visualize", "--help-categories")
+    assert exit_info.value.code == 0
+    out = capsys.readouterr().out
+    assert "inference:" in out
+    assert "top_users" in out
+    assert not list(dataset.glob("*.svg"))
+
+
 def test_start_and_end_must_pair(
     dataset: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
