@@ -10,7 +10,8 @@ from .helpers import (
     add_percent,
     filter_period,
     group_time,
-    plot_stacked_pct,
+    plot_bars,
+    rank,
     window_slug,
 )
 
@@ -45,16 +46,18 @@ def status(
     aggregated = (
         aggregated.sort(*buckets, "status_code")
         if buckets
-        else aggregated.sort("request_count", descending=True)
+        else rank(aggregated, "request_count", "status_code")
     )
-    plot_stacked_pct(
+    plot_bars(
         aggregated.collect(engine="streaming"),
         start,
         end,
         granularity,
+        "pct_request",
         "status_code",
         "Requests By Status",
         "Status Code",
         "% of Requests",
         f"status_{granularity}_{window_slug(start, end)}.svg",
+        stacked=True,
     )

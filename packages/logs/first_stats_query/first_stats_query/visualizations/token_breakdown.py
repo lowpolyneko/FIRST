@@ -9,8 +9,8 @@ from .helpers import (
     LoadData,
     filter_period,
     group_time,
-    plot_info,
     plot_stacked,
+    time_axis,
     window_label,
     window_slug,
 )
@@ -55,7 +55,7 @@ def token_breakdown(
         )
     )
 
-    axis = plot_info(granularity)
+    axis = time_axis(granularity)
     for cluster in melted.get_column("cluster").unique().to_list():
         plot_stacked(
             melted.filter(pl.col("cluster") == cluster),
@@ -63,7 +63,8 @@ def token_breakdown(
             y_col="tokens",
             by_col="token_type",
             title=f"Token Usage Breakdown By Type - {cluster} ({window_label(start, end)})",
-            xlabel=axis["xlabel"] or "Cluster",
+            xlabel=axis.label or "Cluster",
             ylabel="# of Tokens",
             save_path=f"token_breakdown_{cluster}_{granularity}_{window_slug(start, end)}.svg",
+            horizontal=not buckets,
         )

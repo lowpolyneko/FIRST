@@ -7,11 +7,18 @@ axis labels; the period (6m/1m/all) controls the data filter.
 
 import datetime
 from collections.abc import Callable
-from typing import Any
+from math import ceil, inf
+from typing import Any, NamedTuple
 
 import holoviews as hv  # type: ignore[import-untyped]
 import hvplot.polars  # type: ignore  # noqa: F401 (registers DataFrame.hvplot accessor)
 import polars as pl
+
+# Recipes are saved as matplotlib images, so matplotlib must be the active
+# backend: hvplot attaches plot options (title, size, stacking, the barh flip)
+# to whichever backend is current, and options kept for another backend are
+# dropped when the figure is rendered.
+hv.extension("matplotlib")
 
 # Loads one ingested stream; the signature every recipe is called with.
 LoadData = Callable[[str], pl.LazyFrame]
@@ -130,9 +137,45 @@ def add_percent(
     return aggregated.with_columns((pl.col(value) / total).alias("pct_request"))
 
 
+def rank(df: pl.LazyFrame, value: str, name: str) -> pl.LazyFrame:
+    """Rank categories by ``value``, biggest first, ties in ``name`` order.
+
+    Ordering by the measure alone leaves ties in whatever order the parallel
+    sort found them, so the same command can draw a different chart twice.
+    """
+    return df.sort([value, name], descending=[True, False])
+
+
 # ── Granularity-aware plotting helpers ──────────────────────────────────
 # Granularity options: "daily", "monthly", "yearly", "auto"
-#   - auto = no time dimension (single aggregated bar chart)
+#   - auto = no time dimension, so the categories themselves become the axis
+
+# Every chart is drawn on the same wide figure. A category axis then stretches
+# it taller if its labels do not fit, which needs the figure to exist already.
+_FIGURE_WIDTH = 800
+_TILT_DEG = 45  # long labels read better tilted than printed on each other
+_LABEL_GAP_PX = 8.0
+_MAX_TALLER = 3.0
+
+
+class TimeAxis(NamedTuple):
+    """How a granularity puts time on the x axis; both unset for ``auto``."""
+
+    x_col: str | None
+    label: str | None
+
+
+def time_axis(granularity: str) -> TimeAxis:
+    """Return the bucket column and caption a granularity plots time by."""
+    match granularity:
+        case "daily":
+            return TimeAxis("day", "Date")
+        case "monthly":
+            return TimeAxis("month_year", "Month")
+        case "yearly":
+            return TimeAxis("year", "Year")
+        case _:  # auto
+            return TimeAxis(None, None)
 
 
 def window_label(start: datetime.datetime | None, end: datetime.datetime | None) -> str:
@@ -149,7 +192,15 @@ def window_slug(start: datetime.datetime | None, end: datetime.datetime | None) 
     return f"{start:%Y-%m-%d}_{end:%Y-%m-%d}"
 
 
-def plot_bar(
+def no_rows(df: pl.DataFrame, save_path: str) -> bool:
+    """Report a selection with no rows to plot, so callers can skip it."""
+    if df.is_empty():
+        print(f"{save_path}: no rows in the selected window, skipped")
+        return True
+    return False
+
+
+def plot_bars(
     df: pl.DataFrame,
     start: datetime.datetime | None,
     end: datetime.datetime | None,
@@ -160,75 +211,29 @@ def plot_bar(
     xlabel: str,
     ylabel: str,
     save_path: str,
+    stacked: bool = False,
 ) -> None:
-    """Grouped bar chart, adapted to granularity."""
+    """Bar chart of ``y_col`` per ``by_col`` value, over time if there is time.
+
+    Without a time axis the categories take the axis and the chart turns
+    horizontal, the form every per-category chart had before the port.
+    """
     if no_rows(df, save_path):
         return
-    axis = plot_info(granularity)
-    title_text = f"{title} ({window_label(start, end)})"
-
-    if granularity == "auto":
-        plot_obj = _hvplot(df).bar(
-            x=by_col,
-            y=y_col,
-            title=title_text,
-            xlabel=axis["xlabel"] or xlabel,
-            ylabel=ylabel,
-            aspect="square",
-        )
-    else:
-        plot_obj = _hvplot(df).bar(
-            x=axis["x_col"],
-            y=y_col,
-            by=by_col,
-            title=title_text,
-            xlabel=axis["xlabel"] or xlabel,
-            ylabel=ylabel,
-            aspect="square",
-            stacked=False,
-            width=800,
-        )
-    save_plot(plot_obj, save_path)
-
-
-def plot_stacked_pct(
-    df: pl.DataFrame,
-    start: datetime.datetime | None,
-    end: datetime.datetime | None,
-    granularity: str,
-    by_col: str,
-    title: str,
-    xlabel: str,
-    ylabel: str,
-    save_path: str,
-) -> None:
-    """Stacked bar chart with percentage, adapted to granularity."""
-    if no_rows(df, save_path):
-        return
-    axis = plot_info(granularity)
-    title_text = f"{title} ({window_label(start, end)})"
-
-    if granularity == "auto":
-        plot_obj = _hvplot(df).bar(
-            x=by_col,
-            y="pct_request",
-            title=title_text,
-            xlabel=axis["xlabel"] or xlabel,
-            ylabel=ylabel,
-            aspect="square",
-            stacked=True,
-        )
-    else:
-        plot_obj = _hvplot(df).bar(
-            x=axis["x_col"],
-            y="pct_request",
-            by=by_col,
-            title=title_text,
-            xlabel=axis["xlabel"] or xlabel,
-            ylabel=ylabel,
-            aspect="square",
-            stacked=True,
-        )
+    x_col, label = time_axis(granularity)
+    plot_obj = _bars(
+        df,
+        # With no time axis the categories themselves become the axis, and
+        # have nothing left to group the bars by.
+        x_col or by_col,
+        y_col,
+        f"{title} ({window_label(start, end)})",
+        label or xlabel,
+        ylabel,
+        by_col=by_col if x_col else None,
+        stacked=stacked,
+        horizontal=x_col is None,
+    )
     save_plot(plot_obj, save_path)
 
 
@@ -244,15 +249,39 @@ def plot_barh(
     """Horizontal bar chart, one bar per value of ``x_col``."""
     if no_rows(df, save_path):
         return
-    plot_obj = _hvplot(df).barh(
-        x=x_col,
-        y=y_col,
-        title=title,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        aspect="square",
+    save_plot(
+        _bars(df, x_col, y_col, title, xlabel, ylabel, horizontal=True), save_path
     )
-    save_plot(plot_obj, save_path)
+
+
+def plot_stacked(
+    df: pl.DataFrame,
+    x_col: str,
+    y_col: str,
+    by_col: str,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    save_path: str,
+    horizontal: bool = False,
+) -> None:
+    """Stacked bar chart of ``y_col`` split by ``by_col`` over ``x_col``."""
+    if no_rows(df, save_path):
+        return
+    save_plot(
+        _bars(
+            df,
+            x_col,
+            y_col,
+            title,
+            xlabel,
+            ylabel,
+            by_col=by_col,
+            stacked=True,
+            horizontal=horizontal,
+        ),
+        save_path,
+    )
 
 
 def plot_hist(
@@ -273,70 +302,108 @@ def plot_hist(
         xlabel=xlabel,
         ylabel=ylabel,
         aspect="square",
+        width=_FIGURE_WIDTH,
         **kwargs,
     )
     save_plot(plot_obj, save_path)
 
 
-def plot_stacked(
+def _bars(
     df: pl.DataFrame,
     x_col: str,
     y_col: str,
-    by_col: str,
     title: str,
     xlabel: str,
     ylabel: str,
-    save_path: str,
-) -> None:
-    """Stacked bar chart of ``y_col`` split by ``by_col`` over ``x_col``."""
-    if no_rows(df, save_path):
-        return
-    plot_obj = _hvplot(df).bar(
-        x=x_col,
-        y=y_col,
-        by=by_col,
-        stacked=True,
-        title=title,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        aspect="square",
-        width=800,
-    )
-    save_plot(plot_obj, save_path)
+    by_col: str | None = None,
+    stacked: bool = False,
+    horizontal: bool = False,
+) -> Any:
+    """The one hvplot bar call: horizontal charts read down the page instead."""
+    opts: dict[str, Any] = {
+        "x": x_col,
+        "y": y_col,
+        "title": title,
+        "xlabel": xlabel,
+        "ylabel": ylabel,
+        "width": _FIGURE_WIDTH,
+        "aspect": "auto" if horizontal else "square",
+    }
+    if by_col:
+        opts["by"] = by_col
+        opts["stacked"] = stacked
+    plot_obj = (_hvplot(df).barh if horizontal else _hvplot(df).bar)(**opts)
+    if by_col and not stacked:
+        # Labelling every bar of every group is what crowded the old axes;
+        # one label per bucket puts the series in the legend, where they belong.
+        plot_obj = plot_obj.opts(multi_level=False)
+    return plot_obj
 
 
-def no_rows(df: pl.DataFrame, save_path: str) -> bool:
-    """Report a selection with no rows to plot, so callers can skip it."""
-    if df.is_empty():
-        print(f"{save_path}: no rows in the selected window, skipped")
-        return True
-    return False
+def plot_figure(plot: Any) -> Any:
+    """The figure ``plot`` renders to, with a crowded axis spaced out."""
+    fig = hv.renderer("matplotlib").get_plot(plot).state
+    space_labels(fig)
+    fig.tight_layout()
+    return fig
 
 
 def save_plot(plot: Any, save_path: str) -> None:
-    """Render ``plot`` to ``save_path``."""
-    fig = hv.renderer("matplotlib").get_plot(plot).state
-    fig.tight_layout()
-    fig.savefig(save_path)
+    """Render ``plot`` to ``save_path``, spacing a crowded axis first."""
+    plot_figure(plot).savefig(save_path)
+
+
+def space_labels(fig: Any) -> None:
+    """Space the axis labels the figure has no room for.
+
+    A categorical axis puts one label on every position it has, and a long
+    window or a long name is more of them than the figure can hold. Labels
+    along the x axis tilt and then thin out; ones along the y axis, which
+    usually name a bar, get a taller figure to sit in.
+    """
+    fig.canvas.draw()
+    ax = fig.gca()
+
+    y_labels = [t for t in ax.get_yticklabels() if t.get_text()]
+    pitch, need = _pitch(y_labels, "y")
+    if pitch < need:
+        wider, taller = fig.get_size_inches()
+        fig.set_size_inches(
+            wider, taller * min(_MAX_TALLER, need / pitch), forward=True
+        )
+
+    x_labels = [t for t in ax.get_xticklabels() if t.get_text()]
+    pitch, need = _pitch(x_labels, "x")
+    if pitch >= need:
+        return
+    ax.tick_params(axis="x", labelrotation=_TILT_DEG)
+    for label in x_labels:
+        label.set_horizontalalignment("right")
+    fig.canvas.draw()
+    pitch, need = _pitch(x_labels, "x")
+    stride = len(x_labels) if pitch <= 0 else max(1, ceil(need / pitch))
+    if stride > 1:
+        kept = x_labels[::stride]
+        ax.set_xticks(
+            [float(t.get_position()[0]) for t in kept],
+            labels=[t.get_text() for t in kept],
+        )
+
+
+def _pitch(labels: list[Any], axis: str) -> tuple[float, float]:
+    """The gap labels sit in, and the gap they need, measured in pixels."""
+    if len(labels) < 2:
+        return inf, 0.0
+    boxes = [label.get_window_extent() for label in labels]
+    if axis == "y":
+        pitch = min(float(b.y0 - a.y0) for a, b in zip(boxes, boxes[1:]))
+        need = max(float(b.height) for b in boxes) + _LABEL_GAP_PX
+    else:
+        pitch = min(float(b.x0 - a.x0) for a, b in zip(boxes, boxes[1:]))
+        need = max(float(b.width) for b in boxes) + _LABEL_GAP_PX
+    return pitch, need
 
 
 def _hvplot(df: pl.DataFrame) -> Any:
     """The hvplot accessor, which mypy cannot see on ``pl.DataFrame``."""
     return df.hvplot  # type: ignore[attr-defined]
-
-
-def plot_info(granularity: str) -> dict[str, Any]:
-    """Return the x-axis config for a granularity.
-
-    Bucket columns are ISO-formatted strings, so the categorical axis labels
-    them in order and needs no explicit ticks.
-    """
-    match granularity:
-        case "daily":
-            return {"x_col": "day", "xlabel": "Date"}
-        case "monthly":
-            return {"x_col": "month_year", "xlabel": "Month"}
-        case "yearly":
-            return {"x_col": "year", "xlabel": "Year"}
-        case _:  # auto
-            return {"x_col": None, "xlabel": None}

@@ -125,6 +125,44 @@ def _plot(captured: list[tuple[pl.DataFrame, str]], path_part: str) -> pl.DataFr
     return frames[0]
 
 
+def _plots(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, Any]]:
+    """Capture every plot object the recipes save, along with its path."""
+    captured: list[tuple[str, Any]] = []
+    report = helpers.save_plot
+
+    def record(plot: Any, save_path: str) -> None:
+        report(plot, save_path)
+        captured.append((save_path, plot))
+
+    monkeypatch.setattr(helpers, "save_plot", record)
+    return captured
+
+
+def _figure(captured: list[tuple[str, Any]], path_part: str) -> Any:
+    """Return the axis of the one plot saved to a path containing ``path_part``."""
+    plots = [plot for path, plot in captured if path_part in path]
+    assert len(plots) == 1, f"expected one plot for {path_part!r}"
+    fig = helpers.plot_figure(plots[0])
+    fig.canvas.draw()
+    return fig.gca()
+
+
+def _colliding(labels: list[Any]) -> int:
+    """How many neighbouring labels print on top of each other."""
+    boxes = [label.get_window_extent() for label in labels]
+    return sum(1 for a, b in zip(boxes, boxes[1:]) if a.overlaps(b))
+
+
+def test_ranked_ties_keep_name_order() -> None:
+    """Categories ranked equal must not shuffle between two runs."""
+    frame = pl.DataFrame({"name": ["b", "a", "c"], "value": [5.0, 5.0, 9.0]}).lazy()
+    assert helpers.rank(frame, "value", "name").collect()["name"].to_list() == [
+        "c",
+        "a",
+        "b",
+    ]
+
+
 def test_yearly_granularity_buckets_by_year(
     monkeypatch: pytest.MonkeyPatch, dataset: Path
 ) -> None:
@@ -258,6 +296,104 @@ def test_empty_window_skips_plots(
     )
     assert not list(dataset.glob("*.svg"))
     assert "no rows in the selected window" in capsys.readouterr().out
+
+
+def test_plot_options_reach_the_renderer(
+    dataset: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """hvplot keeps options per backend, so matplotlib must be the active one."""
+    captured = _plots(monkeypatch)
+    _run(monkeypatch, dataset, "visualize", "cluster", "cluster_tokens")
+    ax = _figure(captured, "tokens_auto_")
+    assert "Total Token Usage By Cluster" in ax.get_title()
+    # barh puts the value scale across, so the count label rides the x axis.
+    assert ax.get_xlabel() == "# of Total Tokens"
+
+
+def test_time_axis_labels_one_bucket_each(
+    dataset: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Series go in the legend, not between the month labels."""
+    captured = _plots(monkeypatch)
+    _run(
+        monkeypatch,
+        dataset,
+        "visualize",
+        "cluster",
+        "cluster_tokens",
+        "--granularity",
+        "monthly",
+        "--start",
+        "2024-06-01",
+        "--end",
+        "2024-08-31",
+    )
+    ax = _figure(captured, "tokens_monthly_")
+    labels = [t.get_text() for t in ax.get_xticklabels() if t.get_text()]
+    assert sorted(labels) == ["2024-06", "2024-07", "2024-08"]
+    assert ax.get_legend() is not None
+
+
+def test_daily_axis_stays_legible(
+    dataset: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A crowded date axis drops labels until they can be read again."""
+    captured = _plots(monkeypatch)
+    _run(
+        monkeypatch,
+        dataset,
+        "visualize",
+        "cluster",
+        "cluster_tokens",
+        "--granularity",
+        "daily",
+        "--start",
+        "2024-06-01",
+        "--end",
+        "2024-08-31",
+    )
+    ax = _figure(captured, "tokens_daily_")
+    labels = [t for t in ax.get_xticklabels() if t.get_text()]
+    assert len(labels) < 92 // 3, f"92 daily buckets kept {len(labels)} labels"
+    assert _colliding(labels) == 0
+
+
+def test_category_charts_are_horizontal(
+    dataset: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Top-N charts list their categories down the side, as they were written."""
+    captured = _plots(monkeypatch)
+    _run(monkeypatch, dataset, "visualize", "inference", "top_users")
+    ax = _figure(captured, "top_users_")
+    assert ax.patches and all(p.get_width() > p.get_height() for p in ax.patches)
+    assert "One Anl" in [t.get_text() for t in ax.get_yticklabels()]
+    assert ax.get_ylabel() == "Name"
+
+
+def test_a_long_category_axis_grows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """One label per bar outgrows the default height, which then grows."""
+    captured = _plots(monkeypatch)
+    frame = pl.DataFrame(
+        {
+            "name": [f"institution-{index}.example.org" for index in range(25)],
+            "value": [float(index) for index in range(25)],
+        }
+    )
+    helpers.plot_barh(
+        frame,
+        "name",
+        "value",
+        "Many",
+        "Name",
+        "# of Things",
+        str(tmp_path / "many.svg"),
+    )
+    ax = _figure(captured, "many.svg")
+    labels = [t for t in ax.get_yticklabels() if t.get_text()]
+    assert len(labels) == 25
+    assert _colliding(labels) == 0
 
 
 def test_visualize_needs_a_category(

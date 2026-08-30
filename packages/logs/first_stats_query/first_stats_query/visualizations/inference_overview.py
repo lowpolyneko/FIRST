@@ -16,6 +16,7 @@ from .helpers import (
     join_user,
     plot_barh,
     plot_hist,
+    rank,
     window_label,
     window_slug,
 )
@@ -41,7 +42,7 @@ def top_users(
         .select("user.name", "total_tokens")
         .group_by("user.name")
         .agg(pl.col("total_tokens").sum())
-        .sort("total_tokens", descending=True)
+        .pipe(rank, "total_tokens", "user.name")
         .limit(20)
         .collect(engine="streaming")
     )
@@ -70,7 +71,7 @@ def top_models(
         .select("model", "total_tokens")
         .group_by("model")
         .agg(pl.col("total_tokens").sum())
-        .sort("total_tokens", descending=True)
+        .pipe(rank, "total_tokens", "model")
         .limit(20)
         .collect(engine="streaming")
     )
@@ -98,7 +99,7 @@ def top_models_requests(
         load_data("metrics")
         .group_by("model")
         .agg(pl.col("model").count().alias("model_count"))
-        .sort("model_count", descending=True)
+        .pipe(rank, "model_count", "model")
         .limit(20)
         .collect(engine="streaming")
     )
@@ -130,7 +131,7 @@ def top_models_users(
         .unique(subset=["model", "user.name"])
         .group_by("model")
         .agg(pl.col("user.name").count().alias("user_count"))
-        .sort("user_count", descending=True)
+        .pipe(rank, "user_count", "model")
         .limit(20)
         .collect(engine="streaming")
     )

@@ -11,7 +11,8 @@ from .helpers import (
     group_time,
     join_request_log,
     join_user,
-    plot_bar,
+    plot_bars,
+    rank,
     window_slug,
 )
 
@@ -42,9 +43,9 @@ def cluster_tokens(
     result = (
         result.sort(*buckets, "cluster")
         if buckets
-        else result.sort("total_tokens", descending=True)
+        else rank(result, "total_tokens", "cluster")
     )
-    plot_bar(
+    plot_bars(
         result.collect(engine="streaming"),
         start,
         end,
@@ -79,9 +80,9 @@ def cluster_requests(
     result = (
         result.sort(*buckets, "cluster")
         if buckets
-        else result.sort("request_count", descending=True)
+        else rank(result, "request_count", "cluster")
     )
-    plot_bar(
+    plot_bars(
         result.collect(engine="streaming"),
         start,
         end,
@@ -126,9 +127,9 @@ def cluster_users(
     result = (
         result.sort(*buckets, "cluster")
         if buckets
-        else result.sort("user_count", descending=True)
+        else rank(result, "user_count", "cluster")
     )
-    plot_bar(
+    plot_bars(
         result.collect(engine="streaming"),
         start,
         end,

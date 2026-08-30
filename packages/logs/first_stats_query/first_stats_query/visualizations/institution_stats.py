@@ -12,7 +12,8 @@ from .helpers import (
     group_time,
     join_request_log,
     join_user,
-    plot_stacked_pct,
+    plot_bars,
+    rank,
     window_slug,
 )
 
@@ -56,16 +57,18 @@ def institution(
     aggregated = (
         aggregated.sort(*buckets, "institution")
         if buckets
-        else aggregated.sort("request_count", descending=True)
+        else rank(aggregated, "request_count", "institution")
     )
-    plot_stacked_pct(
+    plot_bars(
         aggregated.collect(engine="streaming"),
         start,
         end,
         granularity,
+        "pct_request",
         "institution",
         "Requests By Institution",
         "Institution",
         "% of Requests",
         f"institution_{granularity}_{window_slug(start, end)}.svg",
+        stacked=True,
     )
