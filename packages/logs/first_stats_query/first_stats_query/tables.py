@@ -73,7 +73,8 @@ def _csv_path(
         parts.extend(f"{name}={value}" for name, value in filters.items())
     if aggregate is not None:
         parts.append("agg")
-    return "_".join(parts) + ".csv"
+    # A filter value is data, e.g. a model name, and can contain "/".
+    return "_".join(parts).replace("/", "_") + ".csv"
 
 
 def generate_table(

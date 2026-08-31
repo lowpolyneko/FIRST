@@ -432,6 +432,26 @@ def test_start_and_end_must_pair(
     assert "--start and --end must be given together" in str(exit_info.value)
 
 
+def test_all_period_cannot_take_a_window(
+    dataset: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--period all has no window to override, so --start/--end are refused."""
+    with pytest.raises(SystemExit) as exit_info:
+        _run(
+            monkeypatch,
+            dataset,
+            "table",
+            "metrics",
+            "--period",
+            "all",
+            "--start",
+            "2025-01-01",
+            "--end",
+            "2025-12-31",
+        )
+    assert "cannot be combined" in str(exit_info.value)
+
+
 def test_group_requires_aggregate(
     dataset: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -472,3 +492,18 @@ def test_windowed_table_sums_only_matching_rows(
     assert "total_tokens" in printed
     # 365 of the 801 days fall in 2025, each worth 110 + 2 * index tokens.
     assert str(sum(110 + 2 * index for index in range(214, 214 + 365))) in printed
+
+
+def test_filter_needs_a_value(dataset: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A --filter without = is refused instead of matching an empty string."""
+    with pytest.raises(SystemExit) as exit_info:
+        _run(monkeypatch, dataset, "table", "metrics", "--filter", "cluster")
+    assert "--filter expects COLUMN=value" in str(exit_info.value)
+
+
+def test_filter_value_with_a_slash_still_exports(
+    dataset: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A filter value is data (e.g. a model name), so it cannot be a filename."""
+    _run(monkeypatch, dataset, "table", "metrics", "--filter", "model=gpt-4o/mini")
+    assert list(dataset.glob("metrics_all_model=gpt-4o_mini.csv"))

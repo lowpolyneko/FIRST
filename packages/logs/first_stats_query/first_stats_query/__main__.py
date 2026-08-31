@@ -88,7 +88,14 @@ def _resolve_window(
     period: str | None, start: str | None, end: str | None
 ) -> tuple[datetime.datetime | None, datetime.datetime | None]:
     """Resolve an optional period preset to a concrete window, overridable with --start/--end."""
-    if period is None or period == "all":
+    if period is None:
+        return (None, None)
+    if period == "all":
+        if start or end:
+            raise SystemExit(
+                "error: --period all cannot be combined with --start/--end; "
+                "drop --period all to use them as a window"
+            )
         return (None, None)
     today = _today_utc()
     delta = _period_span(period)
@@ -122,7 +129,8 @@ def _add_window_args(
         choices=["6m", "1m", "all"],
         default=None,
         help="Relative window preset from today (6m=last 6 months, 1m=last month, "
-        "all=no filter); --start/--end override either end of the window",
+        "all=no filter); --start/--end override either end of the window "
+        "(not with all)",
     )
     parser.add_argument(
         "--start",
@@ -220,7 +228,9 @@ def _parse_filters(args: argparse.Namespace) -> dict[str, str] | None:
         return None
     filters: dict[str, str] = {}
     for spec in args.filter:
-        name, _, value = spec.partition("=")
+        name, sep, value = spec.partition("=")
+        if not sep:
+            raise SystemExit(f"error: --filter expects COLUMN=value, got {spec!r}")
         filters[name] = value
     return filters
 
