@@ -13,4 +13,4 @@ memchr = "2.8.3"
 memmap2 = "0.9.11"
 polars = { version = "0.54.4", features = ["json", "lazy", "parquet", "streaming", "strings"] }
 regex = "1.13.1"
-sonic-rs = "0.5.8"
+sonic-rs = { version = "0.5.8", features = ["sort_keys"] }

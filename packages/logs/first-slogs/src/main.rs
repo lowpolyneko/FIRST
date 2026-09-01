@@ -1,10 +1,10 @@
 use std::{
-    fs::{self, File},
-    io::{self, BufWriter, Write},
+    fs,
     path::{Path, PathBuf},
 };
 
 use clap::{Parser, Subcommand};
+use sonic_rs::Object;
 
 mod parse;
 mod validation;
@@ -39,7 +39,7 @@ enum Command {
 /// Sorted paths of the regular files in `dir`.
 fn files(dir: &Path) -> anyhow::Result<Vec<PathBuf>> {
     let mut paths: Vec<PathBuf> = fs::read_dir(dir)?
-        .collect::<Result<Vec<_>, io::Error>>()?
+        .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .map(|entry| entry.path())
         .filter(|path| path.is_file())
@@ -60,20 +60,16 @@ fn artifacts(dataset_dir: &Path, suffix: &str) -> anyhow::Result<Vec<PathBuf>> {
         .collect())
 }
 
-/// Write the large request checksums of `squashfs` into an index file next to
-/// it, one `uuid checksum` per line, returning the index path.
+/// Write the large request checksums of `squashfs` into a json map next to it,
+/// mapping each request uuid to its checksum, returning the index path.
 fn index_squashfs(squashfs: &Path) -> anyhow::Result<PathBuf> {
-    let mut checksums: Vec<_> = validation::large_request_checksums(squashfs)?
-        .into_iter()
-        .collect();
-    checksums.sort_by(|(uuid, _), (other, _)| uuid.cmp(other));
-
-    let index = squashfs.with_added_extension("index");
-    let mut writer = BufWriter::new(File::create(&index)?);
-    for (uuid, checksum) in checksums {
-        writeln!(writer, "{uuid} {checksum}")?;
+    let mut table = Object::new();
+    for (uuid, checksum) in validation::large_request_checksums(squashfs)? {
+        table.insert(&uuid, checksum.to_string().as_str());
     }
-    writer.flush()?;
+
+    let index = squashfs.with_added_extension("index.json");
+    fs::write(&index, sonic_rs::to_vec_pretty(&table)?)?;
 
     Ok(index)
 }
