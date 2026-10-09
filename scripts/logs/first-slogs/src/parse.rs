@@ -706,6 +706,9 @@ fn pull_streaming_metrics(app: &Path) -> anyhow::Result<DataFrame> {
     let mut total_tokens: Vec<Option<i64>> = Vec::new();
     let mut completion_tokens: Vec<Option<i64>> = Vec::new();
     let mut prompt_tokens: Vec<Option<i64>> = Vec::new();
+    // the estimation runs after the response, so the line's own timestamp is the
+    // completion time a streamed request's row otherwise lacks
+    let mut timestamps: Vec<Option<String>> = Vec::new();
 
     for line in lines(&mmap) {
         // the message's uuid is the ephemeral streaming task id; the
@@ -719,6 +722,7 @@ fn pull_streaming_metrics(app: &Path) -> anyhow::Result<DataFrame> {
             total_tokens.push(total.parse().ok());
             completion_tokens.push(completion.parse().ok());
             prompt_tokens.push(prompt.parse().ok());
+            timestamps.push(sonic_rs::get(line, &["timestamp"]).as_str().map(str::to_string));
         }
     }
 
@@ -727,6 +731,7 @@ fn pull_streaming_metrics(app: &Path) -> anyhow::Result<DataFrame> {
         "total_tokens" => total_tokens,
         "completion_tokens" => completion_tokens,
         "prompt_tokens" => prompt_tokens,
+        "timestamp_compute_response" => timestamps,
     )?
     // re-shipped estimation lines fan the merge out; the log is
     // append-ordered, so each access id keeps its last line
@@ -774,6 +779,7 @@ fn write_merged_request_metrics(
             col("total_tokens").alias("est_total_tokens"),
             col("completion_tokens").alias("est_completion_tokens"),
             col("prompt_tokens").alias("est_prompt_tokens"),
+            col("timestamp_compute_response").alias("est_timestamp_compute_response"),
         ]);
 
     // merge the estimations into the rows their stream left blank
@@ -787,6 +793,7 @@ fn write_merged_request_metrics(
             col("total_tokens").fill_null(col("est_total_tokens")),
             col("completion_tokens").fill_null(col("est_completion_tokens")),
             col("prompt_tokens").fill_null(col("est_prompt_tokens")),
+            col("timestamp_compute_response").fill_null(col("est_timestamp_compute_response")),
         ]);
 
     to_parquet(dataset_dir, request_metrics, merged)
