@@ -17,9 +17,9 @@ use polars::{
     frame::{DataFrame, UniqueKeepStrategy},
     io::HiveOptions,
     prelude::{
-        ExtraColumnsPolicy, FileWriteFormat, IntoLazy, JoinType, LazyFileListReader, LazyFrame,
-        LazyJsonLineReader, MatchToSchemaPerColumn, MissingColumnsPolicy,
-        MissingColumnsPolicyOrExpr, ParquetWriteOptions, PlRefPath, ScanArgsParquet, Schema,
+        DataType, ExtraColumnsPolicy, FileWriteFormat, IntoLazy, JoinType, LazyFileListReader,
+        LazyFrame, LazyJsonLineReader, MatchToSchemaPerColumn, MissingColumnsPolicy,
+        MissingColumnsPolicyOrExpr, Null, ParquetWriteOptions, PlRefPath, ScanArgsParquet, Schema,
         SinkDestination, SinkTarget, SortMultipleOptions, UnifiedSinkArgs, UpcastOrForbid, by_name,
         col, lit,
     },
@@ -589,7 +589,10 @@ fn heal_request_metrics(
     let requests = LazyJsonLineReader::new(PlRefPath::try_from_path(request_log)?)
         .with_infer_schema_length(None)
         .finish()?
-        .unique(Some(by_name(["id"], false, false)), UniqueKeepStrategy::Last);
+        .unique(
+            Some(by_name(["id"], false, false)),
+            UniqueKeepStrategy::Last,
+        );
 
     // the counts the payloads carry, looked up only for the requests that need
     // them: those whose row the stream left blank, and those it never wrote
@@ -604,8 +607,8 @@ fn heal_request_metrics(
         .no_null_iter()
         .collect();
 
-    let requests = requests.select([col("id")]).collect()?;
-    let ids: Vec<String> = requests
+    let request_ids = requests.clone().select([col("id")]).collect()?;
+    let ids: Vec<String> = request_ids
         .column("id")?
         .str()?
         .no_null_iter()
@@ -617,9 +620,11 @@ fn heal_request_metrics(
     // arrive beside the row's and only fill the blanks
     let usage = pull_payload_usage(large_requests, &ids)?.lazy();
 
+    // the rows the payloads fill: the counts the metrics stream left blank
     let healed = metrics
+        .clone()
         .join_builder()
-        .with(usage)
+        .with(usage.clone())
         .how(JoinType::Left)
         .on([col("request_id")])
         .finish()
@@ -627,9 +632,60 @@ fn heal_request_metrics(
             col("prompt_tokens").fill_null(col("prompt_tokens_right")),
             col("completion_tokens").fill_null(col("completion_tokens_right")),
             col("total_tokens").fill_null(col("total_tokens_right")),
+        ])
+        .select([
+            col("request_id"),
+            col("cluster"),
+            col("framework"),
+            col("model"),
+            col("timestamp_compute_request"),
+            col("timestamp_compute_response"),
+            col("status_code"),
+            col("prompt_tokens"),
+            col("completion_tokens"),
+            col("total_tokens"),
+            col("response_time_sec"),
+            col("throughput_tokens_per_sec"),
         ]);
 
-    to_parquet(dataset_dir, request_metrics, healed)
+    // the rows the stream never wrote at all: the request's own fields, with the
+    // counts the payload reports where it reports any
+    let synthesized = requests
+        .join_builder()
+        .with(metrics.select([col("request_id").alias("counted")]))
+        .left_on([col("id")])
+        .right_on([col("counted")])
+        .how(JoinType::Left)
+        .finish()
+        .filter(col("counted").is_null())
+        .join_builder()
+        .with(usage)
+        .left_on([col("id")])
+        .right_on([col("request_id")])
+        .how(JoinType::Left)
+        .finish()
+        .select([
+            col("id").alias("request_id"),
+            col("cluster"),
+            col("framework"),
+            col("model"),
+            col("timestamp_compute_request"),
+            col("timestamp_compute_response"),
+            col("status_code"),
+            col("prompt_tokens"),
+            col("completion_tokens"),
+            col("total_tokens"),
+            lit(Null {})
+                .cast(DataType::Float64)
+                .alias("response_time_sec"),
+            lit(Null {})
+                .cast(DataType::Float64)
+                .alias("throughput_tokens_per_sec"),
+        ]);
+
+    let healed = healed.collect()?.vstack(&synthesized.collect()?)?;
+
+    to_parquet(dataset_dir, request_metrics, healed.lazy())
 }
 
 fn pull_streaming_metrics(app: &Path) -> anyhow::Result<DataFrame> {
