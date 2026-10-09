@@ -40,6 +40,10 @@ const STREAMS: &[&str] = &[
     "request_log",
     "request_metrics",
     "user",
+    // the transport's own line per request, and the only record of a streamed
+    // response's final status and last byte: the app's access row is written with the
+    // initial 200 before the stream ends
+    "uvicorn.access",
 ];
 
 /// Hive dirs placing partitions at null `year`/`month`/`day` values, which
