@@ -314,8 +314,6 @@ fn to_parquet(dataset_dir: &Path, path: &Path, lines: LazyFrame) -> anyhow::Resu
     Ok(parquet)
 }
 
-/// Convert an `.ndjson` partition next to `path` into a `.parquet` file of
-/// the same stem, returning the parquet path.
 /// A stream log's latest line per key: the log is append-ordered, so a key's last
 /// line is its latest upsert.
 fn latest_lines(path: &Path, stream: &str) -> anyhow::Result<LazyFrame> {
@@ -328,6 +326,8 @@ fn latest_lines(path: &Path, stream: &str) -> anyhow::Result<LazyFrame> {
     })
 }
 
+/// Convert an `.ndjson` partition next to `path` into a `.parquet` file of
+/// the same stem, returning the parquet path.
 fn ndjson_to_parquet(dataset_dir: &Path, path: &Path) -> anyhow::Result<PathBuf> {
     // the partition's stream, which `partition` names as the extension
     // before the `ndjson` one
@@ -339,8 +339,8 @@ fn ndjson_to_parquet(dataset_dir: &Path, path: &Path) -> anyhow::Result<PathBuf>
         .unwrap_or_default();
 
     to_parquet(dataset_dir, path, latest_lines(path, stream)?)
-
 }
+
 
 fn partitions_to_parquet(
     dataset_dir: &Path,
