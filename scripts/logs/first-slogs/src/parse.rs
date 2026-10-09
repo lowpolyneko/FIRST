@@ -336,6 +336,7 @@ fn ndjson_to_parquet(dataset_dir: &Path, path: &Path) -> anyhow::Result<PathBuf>
 fn partitions_to_parquet(
     dataset_dir: &Path,
     mut partitions: HashMap<&'static str, PathBuf>,
+    large_requests: &Path,
 ) -> anyhow::Result<HashMap<&'static str, PathBuf>> {
     for (stream, path) in &mut partitions {
         if matches!(
@@ -353,12 +354,15 @@ fn partitions_to_parquet(
             && let Some(app) = partitions.get("app")
         {
             let streaming_metrics = pull_streaming_metrics(app)?;
-            write_merged_request_metrics(
+            let merged = write_merged_request_metrics(
                 dataset_dir,
                 streaming_metrics,
                 request_metrics,
                 request_log,
-            )?
+            )?;
+            // a metrics row is missing for some requests and carries no token count
+            // for others: the request's payload answers both
+            heal_request_metrics(dataset_dir, large_requests, &merged, request_log)?
         } else {
             ndjson_to_parquet(dataset_dir, request_metrics)?
         };
@@ -468,6 +472,164 @@ pub fn dedup_adjacent(dataset_dir: &Path) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// The token counts a response body reports.
+#[derive(Clone, Copy, Default)]
+struct Usage {
+    prompt_tokens: Option<i64>,
+    completion_tokens: Option<i64>,
+    total_tokens: Option<i64>,
+}
+
+impl Usage {
+    /// Whether the body reported any count at all.
+    fn is_known(&self) -> bool {
+        self.prompt_tokens.is_some()
+            || self.completion_tokens.is_some()
+            || self.total_tokens.is_some()
+    }
+}
+
+/// The JSON bodies a response body holds.
+///
+/// A buffered response is one object. A streamed one is a run of SSE `data:`
+/// lines, where the usage arrives in its own chunk after the deltas -- so the chunk
+/// carrying it is a body like any other, and both shapes are read the same way.
+fn bodies_of(result: &str) -> impl Iterator<Item = &str> {
+    let buffered = result.trim_start().starts_with('{').then_some(result);
+    buffered.into_iter().chain(
+        result
+            .lines()
+            .filter_map(|line| line.strip_prefix("data:"))
+            .map(str::trim)
+            .filter(|body| body.starts_with('{')),
+    )
+}
+
+/// Parse the token counts a response body reports.
+///
+/// A body the backend never measured reports none, which is what leaves the metrics
+/// row blank in the first place -- so an absent count is a real answer rather than a
+/// parse failure, and the caller has to tell them apart.
+fn usage_of(result: &str) -> Usage {
+    let mut usage = Usage::default();
+    for body in bodies_of(result) {
+        let count = |key: &str| sonic_rs::get(body, &["usage", key]).as_i64();
+        // the Responses API names them input/output; the others prompt/completion
+        usage.prompt_tokens = count("prompt_tokens")
+            .or_else(|| count("input_tokens"))
+            .or(usage.prompt_tokens);
+        usage.completion_tokens = count("completion_tokens")
+            .or_else(|| count("output_tokens"))
+            .or(usage.completion_tokens);
+        usage.total_tokens = count("total_tokens").or(usage.total_tokens);
+    }
+    usage
+}
+
+/// The token counts the large request payloads report, keyed by request id.
+///
+/// A payload is written only for a request whose body was too large to keep in the
+/// row, so a request with no payload has its counts inline or nowhere. The key is
+/// the request id, which is the metrics row's `request_id` -- so the lookup is
+/// exact, with nothing matched on text.
+fn pull_payload_usage(large_requests: &Path, ids: &[String]) -> anyhow::Result<DataFrame> {
+    let mut request_ids = Vec::new();
+    let mut prompt_tokens = Vec::new();
+    let mut completion_tokens = Vec::new();
+    let mut total_tokens = Vec::new();
+
+    for id in ids {
+        let payload = large_requests.join(id).with_extension("json");
+        let Ok(payload) = fs::read_to_string(&payload) else {
+            continue; // no payload was written for this request
+        };
+        let value = sonic_rs::get(&payload, &["result"]);
+        let usage = usage_of(value.as_str().unwrap_or(""));
+        if !usage.is_known() {
+            continue; // a payload that reports no counts heals nothing
+        }
+        request_ids.push(id.to_string());
+        prompt_tokens.push(usage.prompt_tokens);
+        completion_tokens.push(usage.completion_tokens);
+        total_tokens.push(usage.total_tokens);
+    }
+
+    Ok(df!(
+        "request_id" => request_ids,
+        "prompt_tokens" => prompt_tokens,
+        "completion_tokens" => completion_tokens,
+        "total_tokens" => total_tokens,
+    )?)
+}
+
+/// Fill the token counts a request's metrics row has none, and add the row a
+/// request never got.
+///
+/// The streaming path emitted no metrics row at all for some requests, and left the
+/// counts blank on others, so neither the row nor its counts can be recovered from
+/// the metrics stream alone. The request log has the row's other fields, and the
+/// response body the counts -- both keyed by request id.
+fn heal_request_metrics(
+    dataset_dir: &Path,
+    large_requests: &Path,
+    request_metrics: &Path,
+    request_log: &Path,
+) -> anyhow::Result<PathBuf> {
+    // the log is append-ordered, so a key's last line is its latest upsert
+    let metrics = LazyJsonLineReader::new(PlRefPath::try_from_path(request_metrics)?)
+        .with_infer_schema_length(None)
+        .finish()?
+        .unique(
+            Some(by_name(["request_id"], false, false)),
+            UniqueKeepStrategy::Last,
+        );
+
+    let requests = LazyJsonLineReader::new(PlRefPath::try_from_path(request_log)?)
+        .with_infer_schema_length(None)
+        .finish()?
+        .unique(Some(by_name(["id"], false, false)), UniqueKeepStrategy::Last);
+
+    // the counts the payloads carry, looked up only for the requests that need
+    // them: those whose row the stream left blank, and those it never wrote
+    let counted = metrics
+        .clone()
+        .filter(col("total_tokens").is_not_null())
+        .select([col("request_id")])
+        .collect()?;
+    let counted: Vec<&str> = counted
+        .column("request_id")?
+        .str()?
+        .no_null_iter()
+        .collect();
+
+    let requests = requests.select([col("id")]).collect()?;
+    let ids: Vec<String> = requests
+        .column("id")?
+        .str()?
+        .no_null_iter()
+        .filter(|id| !counted.contains(id))
+        .map(str::to_string)
+        .collect();
+
+    // the join's colliding columns take a `_right` suffix, so the payloads' counts
+    // arrive beside the row's and only fill the blanks
+    let usage = pull_payload_usage(large_requests, &ids)?.lazy();
+
+    let healed = metrics
+        .join_builder()
+        .with(usage)
+        .how(JoinType::Left)
+        .on([col("request_id")])
+        .finish()
+        .with_columns([
+            col("prompt_tokens").fill_null(col("prompt_tokens_right")),
+            col("completion_tokens").fill_null(col("completion_tokens_right")),
+            col("total_tokens").fill_null(col("total_tokens_right")),
+        ]);
+
+    to_parquet(dataset_dir, request_metrics, healed)
 }
 
 fn pull_streaming_metrics(app: &Path) -> anyhow::Result<DataFrame> {
@@ -681,7 +843,12 @@ fn bundle_requests(
     }
 }
 
-pub fn parse_logs(dataset_dir: &Path, logs: &Path, skip: &[String]) -> anyhow::Result<()> {
+pub fn parse_logs(
+    dataset_dir: &Path,
+    logs: &Path,
+    skip: &[String],
+    large_requests: &Path,
+) -> anyhow::Result<()> {
     fs::create_dir_all(dataset_dir)?;
 
     let logs: Vec<PathBuf> = files(logs)?
@@ -695,12 +862,12 @@ pub fn parse_logs(dataset_dir: &Path, logs: &Path, skip: &[String]) -> anyhow::R
     // each log is parsed into its own dated partitions, so logs are
     // independent and parsed in parallel
     logs.par_iter()
-        .try_for_each(|log| parse_log(dataset_dir, log))?;
+        .try_for_each(|log| parse_log(dataset_dir, log, large_requests))?;
 
     dedup_adjacent(dataset_dir)
 }
 
-fn parse_log(dataset_dir: &Path, log: &Path) -> anyhow::Result<()> {
+fn parse_log(dataset_dir: &Path, log: &Path, large_requests: &Path) -> anyhow::Result<()> {
     println!("Parsing {}...", log.display());
 
     let partitions = match mmap_if_stale(log, dataset_dir)? {
@@ -711,7 +878,7 @@ fn parse_log(dataset_dir: &Path, log: &Path) -> anyhow::Result<()> {
         }
     };
 
-    let partitions = partitions_to_parquet(dataset_dir, partitions)?;
+    let partitions = partitions_to_parquet(dataset_dir, partitions, large_requests)?;
     for partition in partitions.values() {
         println!("Outputted frame {}", partition.display());
     }
