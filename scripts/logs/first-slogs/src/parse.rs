@@ -316,25 +316,30 @@ fn to_parquet(dataset_dir: &Path, path: &Path, lines: LazyFrame) -> anyhow::Resu
 
 /// Convert an `.ndjson` partition next to `path` into a `.parquet` file of
 /// the same stem, returning the parquet path.
-fn ndjson_to_parquet(dataset_dir: &Path, path: &Path) -> anyhow::Result<PathBuf> {
-    // the log is append-ordered, so a key's last line is its latest upsert
+/// A stream log's latest line per key: the log is append-ordered, so a key's last
+/// line is its latest upsert.
+fn latest_lines(path: &Path, stream: &str) -> anyhow::Result<LazyFrame> {
     let lines = LazyJsonLineReader::new(PlRefPath::try_from_path(path)?)
         .with_infer_schema_length(None)
         .finish()?;
+    Ok(match primary_key_of(stream) {
+        Some(key) => lines.unique(Some(by_name([key], false, false)), UniqueKeepStrategy::Last),
+        None => lines,
+    })
+}
+
+fn ndjson_to_parquet(dataset_dir: &Path, path: &Path) -> anyhow::Result<PathBuf> {
     // the partition's stream, which `partition` names as the extension
     // before the `ndjson` one
-    let lines = match path
+    let stream = path
         .file_stem()
         .map(Path::new)
         .and_then(Path::extension)
         .and_then(|stream| stream.to_str())
-        .and_then(primary_key_of)
-    {
-        Some(key) => lines.unique(Some(by_name([key], false, false)), UniqueKeepStrategy::Last),
-        None => lines,
-    };
+        .unwrap_or_default();
 
-    to_parquet(dataset_dir, path, lines)
+    to_parquet(dataset_dir, path, latest_lines(path, stream)?)
+
 }
 
 fn partitions_to_parquet(
@@ -581,22 +586,8 @@ fn heal_request_metrics(
     request_metrics: &Path,
     request_log: &Path,
 ) -> anyhow::Result<PathBuf> {
-    // the log is append-ordered, so a key's last line is its latest upsert
-    let metrics = LazyJsonLineReader::new(PlRefPath::try_from_path(request_metrics)?)
-        .with_infer_schema_length(None)
-        .finish()?
-        .unique(
-            Some(by_name(["request_id"], false, false)),
-            UniqueKeepStrategy::Last,
-        );
-
-    let requests = LazyJsonLineReader::new(PlRefPath::try_from_path(request_log)?)
-        .with_infer_schema_length(None)
-        .finish()?
-        .unique(
-            Some(by_name(["id"], false, false)),
-            UniqueKeepStrategy::Last,
-        );
+    let metrics = latest_lines(request_metrics, "request_metrics")?;
+    let requests = latest_lines(request_log, "request_log")?;
 
     // the counts the payloads carry, looked up only for the requests that need
     // them: those whose row the stream left blank, and those it never wrote
@@ -722,7 +713,11 @@ fn pull_streaming_metrics(app: &Path) -> anyhow::Result<DataFrame> {
             total_tokens.push(total.parse().ok());
             completion_tokens.push(completion.parse().ok());
             prompt_tokens.push(prompt.parse().ok());
-            timestamps.push(sonic_rs::get(line, &["timestamp"]).as_str().map(str::to_string));
+            timestamps.push(
+                sonic_rs::get(line, &["timestamp"])
+                    .as_str()
+                    .map(str::to_string),
+            );
         }
     }
 
@@ -748,14 +743,7 @@ fn write_merged_request_metrics(
     request_metrics: &Path,
     request_log: &Path,
 ) -> anyhow::Result<PathBuf> {
-    // the log is append-ordered, so a key's last line is its latest upsert
-    let lines = LazyJsonLineReader::new(PlRefPath::try_from_path(request_metrics)?)
-        .with_infer_schema_length(None)
-        .finish()?;
-    let lines = match primary_key_of("request_metrics") {
-        Some(key) => lines.unique(Some(by_name([key], false, false)), UniqueKeepStrategy::Last),
-        None => lines,
-    };
+    let lines = latest_lines(request_metrics, "request_metrics")?;
 
     // access_log->request_log mapping
     let mapping = LazyFrame::scan_parquet(
