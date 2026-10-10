@@ -17,11 +17,11 @@ use polars::{
     frame::{DataFrame, UniqueKeepStrategy},
     io::HiveOptions,
     prelude::{
-        AsOfOptions, AsofStrategy, DataType, ExtraColumnsPolicy, FileWriteFormat, IntoLazy, JoinType, LazyFileListReader,
-        LazyFrame, LazyJsonLineReader, MatchToSchemaPerColumn, MissingColumnsPolicy,
-        MissingColumnsPolicyOrExpr, Null, ParquetWriteOptions, PlRefPath, ScanArgsParquet, Schema,
-        SinkDestination, SinkTarget, SortMultipleOptions, UnifiedSinkArgs, UpcastOrForbid, by_name,
-        col, lit,
+        AsOfOptions, AsofStrategy, DataType, ExtraColumnsPolicy, FileWriteFormat, IntoLazy,
+        JoinType, LazyFileListReader, LazyFrame, LazyJsonLineReader, MatchToSchemaPerColumn,
+        MissingColumnsPolicy, MissingColumnsPolicyOrExpr, Null, ParquetWriteOptions, PlRefPath,
+        ScanArgsParquet, Schema, SinkDestination, SinkTarget, SortMultipleOptions, UnifiedSinkArgs,
+        UpcastOrForbid, by_name, col, lit,
     },
 };
 use regex::regex;
@@ -431,9 +431,11 @@ fn partitions_to_parquet(
             && let Some(app) = partitions.get("app")
         {
             let streaming_metrics = pull_streaming_metrics(app)?;
+            let prompt_estimates = pull_prompt_estimates(app)?;
             let merged = write_merged_request_metrics(
                 dataset_dir,
                 streaming_metrics,
+                prompt_estimates,
                 request_metrics,
                 request_log,
             )?;
@@ -805,9 +807,48 @@ fn pull_streaming_metrics(app: &Path) -> anyhow::Result<DataFrame> {
     )?)
 }
 
+/// The prompt's own estimation line, for the requests whose stream never logged a total.
+/// The gateway estimates the prompt before the response and logs the response's estimate when
+/// the stream ends, so a request that never finished has the first line and not the second --
+/// and the same estimator wrote both.
+fn pull_prompt_estimates(app: &Path) -> anyhow::Result<DataFrame> {
+    let mmap = unsafe {
+        // SAFETY: log files are not modified while first-slogs runs
+        Mmap::map(&File::open(app)?)?
+    };
+
+    let re = regex!(
+        r"Prompt token estimation for [0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}: ([0-9]+) tokens from [0-9]+ chars"
+    );
+    let mut access_ids = Vec::new();
+    let mut prompt_tokens: Vec<Option<i64>> = Vec::new();
+
+    for line in lines(&mmap) {
+        if let Some(access_id) = sonic_rs::get(line, &["access_id"]).as_str()
+            && let Some(msg) = sonic_rs::get(line, &["message"]).as_str()
+            && let Some(caps) = re.captures(msg)
+        {
+            let (_, [prompt]) = caps.extract();
+            access_ids.push(access_id.to_string());
+            prompt_tokens.push(prompt.parse().ok());
+        }
+    }
+
+    Ok(df!(
+        "access_log_id" => access_ids,
+        "prompt_tokens" => prompt_tokens,
+    )?
+    .unique_stable(
+        Some(&["access_log_id".to_string()]),
+        UniqueKeepStrategy::Last,
+        None,
+    )?)
+}
+
 fn write_merged_request_metrics(
     dataset_dir: &Path,
     streaming_metrics: DataFrame,
+    prompt_estimates: DataFrame,
     request_metrics: &Path,
     request_log: &Path,
 ) -> anyhow::Result<PathBuf> {
@@ -850,7 +891,14 @@ fn write_merged_request_metrics(
             col("completion_tokens").fill_null(col("est_completion_tokens")),
             col("prompt_tokens").fill_null(col("est_prompt_tokens")),
             col("timestamp_compute_response").fill_null(col("est_timestamp_compute_response")),
-        ]);
+        ])
+        // the prompt-only lines cover the requests the total's line never reached
+        .join_builder()
+        .with(prompt_estimates.lazy())
+        .how(JoinType::Left)
+        .on([col("request_id")])
+        .finish()
+        .with_columns([col("prompt_tokens").fill_null(col("est_prompt_tokens"))]);
 
     to_parquet(dataset_dir, request_metrics, merged)
 }
