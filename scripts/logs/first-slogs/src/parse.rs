@@ -17,7 +17,7 @@ use polars::{
     frame::{DataFrame, UniqueKeepStrategy},
     io::HiveOptions,
     prelude::{
-        DataType, ExtraColumnsPolicy, FileWriteFormat, IntoLazy, JoinType, LazyFileListReader,
+        AsOfOptions, AsofStrategy, DataType, ExtraColumnsPolicy, FileWriteFormat, IntoLazy, JoinType, LazyFileListReader,
         LazyFrame, LazyJsonLineReader, MatchToSchemaPerColumn, MissingColumnsPolicy,
         MissingColumnsPolicyOrExpr, Null, ParquetWriteOptions, PlRefPath, ScanArgsParquet, Schema,
         SinkDestination, SinkTarget, SortMultipleOptions, UnifiedSinkArgs, UpcastOrForbid, by_name,
@@ -341,6 +341,74 @@ fn ndjson_to_parquet(dataset_dir: &Path, path: &Path) -> anyhow::Result<PathBuf>
     to_parquet(dataset_dir, path, latest_lines(path, stream)?)
 }
 
+/// The transport's line, matched onto the access row it followed.
+///
+/// Uvicorn logs a request as its last byte goes out, so a streamed response's final
+/// status and end time are there and not in the access row, which the frontend writes
+/// when the stream begins. The two lines share no id, so the match is the route, the
+/// client and the order of the log: each transport line takes the access row it followed.
+fn match_transport(
+    dataset_dir: &Path,
+    log: &Path,
+    uvicorn_access: &Path,
+    access_log: &Path,
+) -> anyhow::Result<PathBuf> {
+    // uvicorn's client address carries a port the app's does not
+    let transport = LazyFrame::scan_parquet(
+        PlRefPath::try_from_path(uvicorn_access)?,
+        ScanArgsParquet::default(),
+    )?
+    .select([
+        col("timestamp"),
+        col("path").alias("api_route"),
+        col("client_addr")
+            .str()
+            .split(lit(":"))
+            .list()
+            .first()
+            .alias("origin_ip"),
+        col("status_code").alias("transport_status"),
+    ])
+    .sort(["timestamp"], SortMultipleOptions::default());
+
+    let access = LazyFrame::scan_parquet(
+        PlRefPath::try_from_path(access_log)?,
+        ScanArgsParquet::default(),
+    )?
+    .select([
+        col("id"),
+        col("api_route"),
+        col("origin_ip"),
+        col("timestamp_request"),
+    ])
+    .sort(["timestamp_request"], SortMultipleOptions::default());
+
+    let matched = transport
+        .join_builder()
+        .with(access)
+        .on([col("timestamp"), col("timestamp_request")])
+        .how(JoinType::AsOf(Box::new(AsOfOptions {
+            strategy: AsofStrategy::Backward,
+            tolerance: None,
+            tolerance_str: None,
+            left_by: Some(vec!["api_route".into(), "origin_ip".into()]),
+            right_by: Some(vec!["api_route".into(), "origin_ip".into()]),
+            allow_eq: true,
+            check_sortedness: true,
+        })))
+        .finish()
+        .select([
+            col("id"),
+            col("transport_status").alias("status_code"),
+            col("timestamp").alias("timestamp_response"),
+        ]);
+
+    to_parquet(
+        dataset_dir,
+        &partition(log, dataset_dir, "access_log_transport", &date_dirs(log)),
+        matched,
+    )
+}
 
 fn partitions_to_parquet(
     dataset_dir: &Path,
@@ -934,6 +1002,13 @@ fn parse_log(dataset_dir: &Path, log: &Path, large_requests: &Path) -> anyhow::R
     };
 
     let partitions = partitions_to_parquet(dataset_dir, partitions, large_requests)?;
+    if let (Some(uvicorn_access), Some(access_log)) = (
+        partitions.get("uvicorn.access"),
+        partitions.get("access_log"),
+    ) {
+        let transport = match_transport(dataset_dir, log, uvicorn_access, access_log)?;
+        println!("Outputted frame {}", transport.display());
+    }
     for partition in partitions.values() {
         println!("Outputted frame {}", partition.display());
     }
